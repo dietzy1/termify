@@ -15,27 +15,23 @@ const (
 
 var focusStyle = lipgloss.NewStyle().
 	Border(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color(PrimaryColor)) /* .
-	PaddingRight(1).
-	MarginRight(1) */
+	BorderForeground(lipgloss.Color(PrimaryColor))
 
 var unfocusedStyle = lipgloss.NewStyle().
 	Border(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color(BorderColor)) /* .
-	PaddingRight(1).
-	MarginRight(1) */
+	BorderForeground(lipgloss.Color(BorderColor))
 
 const focusModelCount = 3
 
-func (m *model) cycleFocus() {
+func (m *applicationModel) cycleFocus() {
 	m.focusedModel = (m.focusedModel + 1) % focusModelCount
 }
 
-func (m *model) cycleFocusBackward() {
+func (m *applicationModel) cycleFocusBackward() {
 	m.focusedModel = (m.focusedModel - 1 + focusModelCount) % focusModelCount
 }
 
-func (m model) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch m.focusedModel {
 

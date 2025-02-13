@@ -42,7 +42,7 @@ func (m navbarModel) View() string {
 
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
-		Align(lipgloss.Center).Width(m.width).Background(lipgloss.Color(BackgroundColor)).PaddingRight(2)
+		Align(lipgloss.Center).Width(m.width).Background(lipgloss.Color(BackgroundColor))
 
 	/* searchBarStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
