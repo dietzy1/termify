@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/dietzy1/termify/internal/client"
+	"github.com/zmb3/spotify/v2"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,9 +22,11 @@ type audioPlayerModel struct {
 	status   client.Status
 	progress int // Progress in seconds
 	bar      progress.Model
+
+	spotifyState *SpotifyState
 }
 
-func newAudioPlayer() audioPlayerModel {
+func newAudioPlayer(spotifyState *SpotifyState) audioPlayerModel {
 
 	return audioPlayerModel{
 		width: 0,
@@ -37,16 +41,23 @@ func newAudioPlayer() audioPlayerModel {
 				Duration: 200,
 			},
 		},
+		spotifyState: spotifyState,
 	}
 }
 
 func (m audioPlayerModel) songInfoView() string {
-	// Song Title
-	// Artist
-	const songTitle = "Shape of you"
-	const artist = "Ed Sheeran"
+	var songTitle string = "Unknown Song"
+	if m.spotifyState != nil &&
+		m.spotifyState.playerState.Item != nil {
+		songTitle = m.spotifyState.playerState.Item.Name
+	}
 
-	// Create styling for the song title and artist
+	var artist = "Unknown Artist"
+	if m.spotifyState != nil &&
+		m.spotifyState.playerState.Item != nil {
+		artist = m.spotifyState.playerState.Item.Artists[0].Name
+	}
+
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#ffffff")).
 		Bold(true).
@@ -60,7 +71,6 @@ func (m audioPlayerModel) songInfoView() string {
 		Width(20).
 		Padding(0, 0, 0, 2)
 
-	// Create the title/artist vertical layout
 	songInfo := lipgloss.JoinVertical(
 		lipgloss.Top,
 		titleStyle.Render(songTitle),
@@ -120,6 +130,22 @@ func (m audioPlayerModel) Init() tea.Cmd {
 
 func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case StateUpdateMsg:
+		if msg.Type == PlayerStateUpdated {
+			log.Println("Playback controls recieved player state update")
+			if msg.Err != nil {
+				log.Println("Error updating player state")
+				return m, nil
+			}
+			if playerState, ok := msg.Data.(*spotify.PlayerState); ok {
+				log.Println("Updating playback controls with new player state", playerState)
+			} else {
+				log.Println("Error converting data to player state")
+			}
+			return m, nil
+		}
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.bar.Width = msg.Width / 3

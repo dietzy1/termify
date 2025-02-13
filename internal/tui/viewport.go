@@ -3,10 +3,12 @@ package tui
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
+	"github.com/zmb3/spotify/v2"
 )
 
 var _ tea.Model = (*viewportModel)(nil)
@@ -14,6 +16,9 @@ var _ tea.Model = (*viewportModel)(nil)
 type viewportModel struct {
 	width, height int
 	table         table.Model
+	tracks        []spotify.PlaylistItem // Store tracks for selection
+
+	spotifyState *SpotifyState
 }
 
 // "https://api.spotify.com/v1/playlists/3bNsJuQ0M60iaK7fuwyKwS/tracks"
@@ -42,13 +47,14 @@ func createTable() table.Model {
 			Background(lipgloss.Color(BackgroundColor)).
 			Foreground(lipgloss.Color(PrimaryColor)).
 			Padding(0, 0, 0, 1).Bold(true),
-		//Background(lipgloss.Color(PrimaryColor)),
 	)
 }
 
-func newViewport() viewportModel {
+func newViewport(spotifyState *SpotifyState) viewportModel {
 	return viewportModel{
-		table: createTable(),
+		table:        createTable(),
+		tracks:       make([]spotify.PlaylistItem, 0),
+		spotifyState: spotifyState,
 	}
 }
 
@@ -61,48 +67,84 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height)
+		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 6)
 		log.Printf("Viewport width: %d, height: %d", m.width, m.height)
 
-	case tracksLoadedMsg:
-		if msg.err != nil {
-			log.Printf("Error loading tracks into viewport: %v", msg.err)
+	case StateUpdateMsg:
+		if msg.Type == TracksUpdated {
+			if msg.Err != nil {
+				log.Printf("Viewport: Error loading tracks: %v", msg.Err)
+				return m, nil
+			}
+
+			// Convert tracks to table rows
+			if tracks, ok := msg.Data.([]spotify.PlaylistItem); ok {
+				log.Printf("Viewport: Converting %d tracks to table rows", len(tracks))
+				var rows []table.Row
+				for i, track := range tracks {
+					if track.Track.Track == nil {
+						log.Printf("Viewport: Warning - Track %d is nil", i+1)
+						continue
+					}
+
+					// Get primary artist name
+					artistName := "Unknown Artist"
+					if len(track.Track.Track.Artists) > 0 {
+						artistName = track.Track.Track.Artists[0].Name
+					}
+
+					// Get album name
+					albumName := "Unknown Album"
+					if track.Track.Track.Album.Name != "" {
+						albumName = track.Track.Track.Album.Name
+					}
+
+					// Format duration
+					duration := formatTrackDuration(int(track.Track.Track.Duration))
+
+					rows = append(rows, table.NewRow(table.RowData{
+						"#":        fmt.Sprintf("%d", i+1),
+						"title":    track.Track.Track.Name,
+						"artist":   artistName,
+						"album":    albumName,
+						"duration": duration,
+					}))
+				}
+
+				log.Printf("Viewport: Setting %d rows to table", len(rows))
+				m.tracks = tracks // Store tracks for selection
+				m.table = m.table.WithRows(rows)
+			} else {
+				log.Printf("Viewport: Failed to convert tracks data: %T", msg.Data)
+			}
 			return m, nil
 		}
-
-		// Convert tracks to table rows
-		var rows []table.Row
-		for _, track := range msg.tracks {
-			// Get primary artist name
-			artistName := "Unknown Artist"
-			if len(track.Track.Artists) > 0 {
-				artistName = track.Track.Artists[0].Name
-			}
-
-			// Get album name
-			albumName := "Unknown Album"
-			if track.Track.Album.Name != "" {
-				albumName = track.Track.Album.Name
-			}
-
-			// Format duration
-			duration := formatTrackDuration(int(track.Track.Duration))
-
-			rows = append(rows, table.NewRow(table.RowData{
-				"title":    track.Track.Name,
-				"artist":   artistName,
-				"album":    albumName,
-				"duration": duration,
-			}))
-		}
-
-		m.table = m.table.WithRows(rows)
-		return m, nil
 
 	// Handle keyboard events for table navigation
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "up", "down", "enter", "esc":
+		case "enter":
+			// When enter is pressed, get the selected track and emit a selection message
+			if selected := m.table.HighlightedRow(); selected.Data != nil {
+				if numStr, ok := selected.Data["#"].(string); ok {
+					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.tracks) {
+						track := m.tracks[idx-1]
+						if track.Track.Track != nil {
+							log.Printf("Viewport: Selected track: %s", track.Track.Track.ID)
+
+							return m, m.spotifyState.PlayTrack(track.Track.Track.ID)
+							/* return m, func() tea.Msg {
+								return StateUpdateMsg{
+									Type: TrackSelected,
+									Data: string(track.Track.Track.ID),
+								}
+							} */
+						}
+					}
+				}
+			}
+			return m, nil
+		case "up", "down":
 			var tableCmd tea.Cmd
 			m.table, tableCmd = m.table.Update(msg)
 			return m, tableCmd

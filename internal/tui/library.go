@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -10,6 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/zmb3/spotify/v2"
 )
+
+var _ tea.Model = (*libraryModel)(nil)
 
 // playlist implements list.Item interface
 type playlist struct {
@@ -23,23 +24,20 @@ func (p playlist) Description() string { return p.desc }
 func (p playlist) FilterValue() string { return p.title }
 
 type libraryModel struct {
-	height        int
-	list          list.Model
-	spotifyClient *spotify.Client
-	err           error
+	height int
+	list   list.Model
+	err    error
 }
 
 // Message type for playlist updates
-type playlistsUpdatedMsg struct {
+/* type playlistsUpdatedMsg struct {
 	playlists []list.Item
 	err       error
-}
+} */
 
-func newLibrary(client *spotify.Client) libraryModel {
+func newLibrary() libraryModel {
 	delegate := list.NewDefaultDelegate()
 
-	// Set fixed width for titles and descriptions
-	//potentially need to change this back to 28
 	const itemWidth = 28
 
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().
@@ -48,7 +46,6 @@ func newLibrary(client *spotify.Client) libraryModel {
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
-	//delegate.Styles.NormalDesc = lipgloss.NewStyle().
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
 		Foreground(lipgloss.Color(TextColor)).
 		Padding(0, 0, 0, 2).
@@ -86,114 +83,68 @@ func newLibrary(client *spotify.Client) libraryModel {
 	l.SetShowHelp(false)
 
 	return libraryModel{
-		list:          l,
-		spotifyClient: client,
-	}
-}
-
-// fetchPlaylists fetches playlists from Spotify and returns them as a command
-func (m libraryModel) fetchPlaylists() tea.Cmd {
-	return func() tea.Msg {
-		log.Println("Fetching playlists...")
-		if m.spotifyClient == nil {
-			log.Println("Error: Spotify client is nil")
-			return playlistsUpdatedMsg{err: fmt.Errorf("spotify client not initialized")}
-		}
-
-		playlists, err := m.spotifyClient.CurrentUsersPlaylists(context.Background())
-		if err != nil {
-			log.Printf("Error fetching playlists: %v", err)
-			return playlistsUpdatedMsg{err: err}
-		}
-
-		if len(playlists.Playlists) == 0 {
-			log.Println("No playlists found")
-			return playlistsUpdatedMsg{playlists: []list.Item{}}
-		}
-
-		// Convert Spotify playlists to our playlist type
-		items := make([]list.Item, 0, len(playlists.Playlists))
-		for _, p := range playlists.Playlists {
-			title := p.Name
-			if title == "" {
-				title = "Untitled Playlist"
-			}
-			desc := p.Owner.DisplayName
-			if desc == "" {
-				desc = "Unknown Owner"
-			}
-
-			items = append(items, playlist{
-				title: title,
-				desc:  desc,
-				uri:   string(p.URI),
-			})
-			log.Printf("Added playlist: %s by %s", title, desc)
-		}
-		log.Printf("Successfully fetched %d playlists", len(items))
-		return playlistsUpdatedMsg{playlists: items}
+		list: l,
 	}
 }
 
 func (m libraryModel) Init() tea.Cmd {
-	// Start fetching playlists immediately
-	log.Println("Initializing library model and fetching playlists...")
-
-	return tea.Sequence(
-		m.fetchPlaylists(),
-		tea.WindowSize(), // This is a bi tof a hack tbf I dont understand why its needed
-	)
+	return tea.WindowSize()
 }
 
 func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	log.Printf("Library model received message of type: %T", msg)
+	log.Printf("Library: Received message of type: %T", msg)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		log.Printf("Library: Updating window size to height: %d", msg.Height)
 		m.height = msg.Height
 		m.list.SetHeight(m.height)
 		return m, nil
 
-	case playlistsUpdatedMsg:
-		if msg.err != nil {
-			m.err = msg.err
-			log.Printf("Error updating playlists: %v", msg.err)
-			return m, nil
-		}
-
-		if len(msg.playlists) == 0 {
-			log.Println("Warning: Setting empty playlist list")
-		} else {
-			log.Printf("Setting %d playlists to list", len(msg.playlists))
-			for i, item := range msg.playlists {
-				if p, ok := item.(playlist); ok {
-					log.Printf("  %d: %s by %s", i+1, p.title, p.desc)
+	case StateUpdateMsg:
+		if msg.Type == PlaylistsUpdated {
+			if msg.Err != nil {
+				m.err = msg.Err
+				log.Printf("Library: Error updating playlists: %v", msg.Err)
+				return m, nil
+			}
+			if playlists, ok := msg.Data.([]spotify.SimplePlaylist); ok {
+				log.Printf("Application: Converting %d playlists to list items", len(playlists))
+				items := make([]list.Item, 0, len(playlists))
+				for _, p := range playlists {
+					title := p.Name
+					if title == "" {
+						title = "Untitled Playlist"
+					}
+					desc := p.Owner.DisplayName
+					if desc == "" {
+						desc = "Unknown Owner"
+					}
+					items = append(items, playlist{
+						title: title,
+						desc:  desc,
+						uri:   string(p.URI),
+					})
 				}
+
+				m.list.SetItems(items)
+				log.Println("Library: Successfully updated playlist items")
+				return m, m.emitSelectedPlaylist()
 			}
 		}
-
-		m.list.SetItems(msg.playlists)
-		return m, nil
 
 	case tea.KeyMsg:
-		if msg.String() == "enter" {
-			// When enter is pressed, emit a playlist selected message
-			if i := m.list.Index(); i != -1 {
-				if p, ok := m.list.SelectedItem().(playlist); ok {
-					log.Printf("Selected playlist: %s", p.uri)
-					return m, func() tea.Msg {
-						return playlistSelectedMsg{playlistID: p.uri}
-					}
-				}
-			}
+		switch msg.String() {
+		case "up", "down":
+			m.list, cmd = m.list.Update(msg)
+			return m, tea.Batch(cmd, m.emitSelectedPlaylist())
 		}
 	}
 
 	// Handle list-specific updates
 	m.list, cmd = m.list.Update(msg)
-	log.Printf("List model was updated by message type: %T", msg)
 	return m, cmd
 }
 
@@ -201,6 +152,17 @@ func (m libraryModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error loading playlists: %v", m.err)
 	}
-
 	return m.list.View()
+}
+
+func (m libraryModel) emitSelectedPlaylist() tea.Cmd {
+	if i := m.list.Index(); i != -1 {
+		if p, ok := m.list.SelectedItem().(playlist); ok {
+			log.Printf("Library: Selected playlist: %s", p.uri)
+			return func() tea.Msg {
+				return playlistSelectedMsg{playlistID: p.uri}
+			}
+		}
+	}
+	return nil
 }

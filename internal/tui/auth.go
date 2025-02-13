@@ -24,14 +24,13 @@ const (
 )
 
 type authModel struct {
-	input        textinput.Model
-	auth         authentication.Service
-	state        AuthState
-	err          error
-	authComplete bool
-	loginURL     string
-	authChan     <-chan authentication.AuthResult
-	copied       bool
+	input    textinput.Model
+	auth     authentication.Service
+	state    AuthState
+	err      error
+	loginURL string
+	authChan <-chan authentication.AuthResult
+	copied   bool
 }
 
 func newAuthModel(auth authentication.Service) authModel {
@@ -42,14 +41,13 @@ func newAuthModel(auth authentication.Service) authModel {
 	textInput.Width = 40
 
 	return authModel{
-		auth:         auth,
-		input:        textInput,
-		state:        StateAwaitingClientID,
-		authComplete: false,
-		err:          nil,
-		loginURL:     "",
-		authChan:     nil,
-		copied:       false,
+		auth:     auth,
+		input:    textInput,
+		state:    StateAwaitingClientID,
+		err:      nil,
+		loginURL: "",
+		authChan: nil,
+		copied:   false,
 	}
 }
 
@@ -85,6 +83,7 @@ func waitForAuth(authChan <-chan authentication.AuthResult) tea.Cmd {
 
 var errClientID = fmt.Errorf("client ID must be 32 characters")
 
+// TODO: I think this should be refactored into using m authModel - For consistency issues
 func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -108,11 +107,9 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.Client != nil {
 			log.Printf("Authentication successful")
-			m.spotifyClient = msg.Client
-			m.authModel.authComplete = true
 			m.authModel.state = StateAuthComplete
-			m.state = ready
-			return m, nil
+			m = transitionToReady(m, msg.Client)
+			return m, m.Init()
 		}
 		return m, nil
 
@@ -212,19 +209,6 @@ func (m model) viewAuth() string {
 	errorStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#FF0000")).
 		MarginTop(1)
-
-	// Show error state
-	/* if m.authModel.err != nil {
-		return containerStyle.Render(lipgloss.JoinVertical(
-			lipgloss.Center,
-			LogoStyle.Render(logo),
-			boxStyle.Render(lipgloss.JoinVertical(
-				lipgloss.Center,
-				errorStyle.Render(fmt.Sprintf("Error: %v\nPlease try again.", m.authModel.err)),
-				inputStyle.Render(m.authModel.input.View()),
-			)),
-		))
-	} */
 
 	switch m.authModel.state {
 	case StateAwaitingClientID:
