@@ -16,7 +16,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const redirectURI = "http://localhost:8080/callback"
+const redirectURI = "http://127.0.0.1:8080/callback"
 
 // AuthResult represents the current state of the authentication process
 type AuthResult struct {
@@ -72,7 +72,11 @@ func (s *SpotifyAuth) initialize(clientID string) {
 	s.auth = spotifyauth.New(
 		spotifyauth.WithClientID(clientID),
 		spotifyauth.WithRedirectURL(redirectURI),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopePlaylistReadCollaborative),
+		spotifyauth.WithScopes(
+			spotifyauth.ScopeUserReadPrivate,
+			spotifyauth.ScopePlaylistReadCollaborative,
+			spotifyauth.ScopeUserReadPlaybackState,
+			spotifyauth.ScopeUserModifyPlaybackState),
 	)
 }
 
