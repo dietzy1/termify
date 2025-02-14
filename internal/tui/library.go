@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/zmb3/spotify/v2"
 )
 
 var _ tea.Model = (*libraryModel)(nil)
@@ -28,12 +27,6 @@ type libraryModel struct {
 	list   list.Model
 	err    error
 }
-
-// Message type for playlist updates
-/* type playlistsUpdatedMsg struct {
-	playlists []list.Item
-	err       error
-} */
 
 func newLibrary() libraryModel {
 	delegate := list.NewDefaultDelegate()
@@ -94,8 +87,6 @@ func (m libraryModel) Init() tea.Cmd {
 func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	log.Printf("Library: Received message of type: %T", msg)
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		log.Printf("Library: Updating window size to height: %d", msg.Height)
@@ -103,37 +94,33 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetHeight(m.height)
 		return m, nil
 
-	case StateUpdateMsg:
-		if msg.Type == PlaylistsUpdated {
-			if msg.Err != nil {
-				m.err = msg.Err
-				log.Printf("Library: Error updating playlists: %v", msg.Err)
-				return m, nil
-			}
-			if playlists, ok := msg.Data.([]spotify.SimplePlaylist); ok {
-				log.Printf("Application: Converting %d playlists to list items", len(playlists))
-				items := make([]list.Item, 0, len(playlists))
-				for _, p := range playlists {
-					title := p.Name
-					if title == "" {
-						title = "Untitled Playlist"
-					}
-					desc := p.Owner.DisplayName
-					if desc == "" {
-						desc = "Unknown Owner"
-					}
-					items = append(items, playlist{
-						title: title,
-						desc:  desc,
-						uri:   string(p.URI),
-					})
-				}
-
-				m.list.SetItems(items)
-				log.Println("Library: Successfully updated playlist items")
-				return m, m.emitSelectedPlaylist()
-			}
+	case PlaylistsUpdatedMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			log.Printf("Library: Error updating playlists: %v", msg.Err)
+			return m, nil
 		}
+		log.Printf("Application: Converting %d playlists to list items", len(msg.Playlists))
+		items := make([]list.Item, 0, len(msg.Playlists))
+		for _, p := range msg.Playlists {
+			title := p.Name
+			if title == "" {
+				title = "Untitled Playlist"
+			}
+			desc := p.Owner.DisplayName
+			if desc == "" {
+				desc = "Unknown Owner"
+			}
+			items = append(items, playlist{
+				title: title,
+				desc:  desc,
+				uri:   string(p.URI),
+			})
+		}
+
+		m.list.SetItems(items)
+		log.Println("Library: Successfully updated playlist items")
+		return m, m.emitSelectedPlaylist()
 
 	case tea.KeyMsg:
 		switch msg.String() {

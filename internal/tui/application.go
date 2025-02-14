@@ -13,11 +13,6 @@ type playlistSelectedMsg struct {
 	playlistID string
 }
 
-/* type tracksLoadedMsg struct {
-		tracks []spotify.PlaylistItem
-	err error
-} */
-
 type applicationModel struct {
 	spotifyState *SpotifyState
 
@@ -68,58 +63,37 @@ func newApplication(client *spotify.Client) applicationModel {
 func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	// Handle state updates first
 	switch msg := msg.(type) {
-	case StateUpdateMsg:
-		log.Printf("Application: Received StateUpdateMsg of type: %v", msg.Type)
-		switch msg.Type {
-		case PlayerStateUpdated:
-			// Update playbackControl with new state
-			if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
-				m.playbackControl = updatedPlaybackControl
-				cmds = append(cmds, cmd)
-			}
-			// Update audioPlayer with new state
-			if updatedAudioPlayer, cmd, ok := updateSubmodel(m.audioPlayer, msg, m.audioPlayer); ok {
-				m.audioPlayer = updatedAudioPlayer
-				cmds = append(cmds, cmd)
-			}
-
-		case PlaylistsUpdated:
-			if msg.Err != nil {
-				log.Printf("Application: Error updating playlists: %v", msg.Err)
-				return m, nil
-			}
-			if updatedLibrary, cmd, ok := updateSubmodel(m.library, msg, m.library); ok {
-				m.library = updatedLibrary
-				cmds = append(cmds, cmd)
-			}
-
-		case TracksUpdated:
-			if msg.Err != nil {
-				log.Printf("Error updating tracks: %v", msg.Err)
-				return m, nil
-			}
-			// Update viewport with new tracks
-			if updatedViewport, cmd, ok := updateSubmodel(m.viewport, msg, m.viewport); ok {
-				m.viewport = updatedViewport
-				cmds = append(cmds, cmd)
-			}
-
-		case PlaylistSelected:
-			if playlistID, ok := msg.Data.(string); ok {
-				// Fetch tracks for the selected playlist
-				cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(playlistID))
-			}
-
-		case TrackSelected:
-			if trackID, ok := msg.Data.(string); ok {
-				log.Printf("Application: Track selected: %s", trackID)
-				// Just update the state directly without emitting another command
-				m.spotifyState.selectedTrackID = trackID
-			}
-			return m, nil // Return nil command to stop the loop
+	case PlayerStateUpdatedMsg:
+		// Update playbackControl with new state
+		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
+			m.playbackControl = updatedPlaybackControl
+			cmds = append(cmds, cmd)
 		}
+		// Update audioPlayer with new state
+		if updatedAudioPlayer, cmd, ok := updateSubmodel(m.audioPlayer, msg, m.audioPlayer); ok {
+			m.audioPlayer = updatedAudioPlayer
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case PlaylistsUpdatedMsg:
+		if updatedLibrary, cmd, ok := updateSubmodel(m.library, msg, m.library); ok {
+			m.library = updatedLibrary
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case TracksUpdatedMsg:
+		// Update viewport with new tracks
+		if updatedViewport, cmd, ok := updateSubmodel(m.viewport, msg, m.viewport); ok {
+			m.viewport = updatedViewport
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case PlaylistSelectedMsg:
+		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
 		return m, tea.Batch(cmds...)
 	}
 
@@ -130,18 +104,6 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			m.spotifyState.SelectPlaylist(msg.playlistID),
 		)
-
-		/* case tracksLoadedMsg:
-		if msg.err != nil {
-			log.Printf("Error loading tracks: %v", msg.err)
-			return m, nil
-		}
-		// Update viewport with new tracks
-		if updatedViewport, cmd, ok := updateSubmodel(m.viewport, msg, m.viewport); ok {
-			m.viewport = updatedViewport
-			cmds = append(cmds, cmd)
-		}
-		return m, tea.Batch(cmds...) */
 	}
 
 	// Handle general application messages

@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dietzy1/termify/internal/client"
-	"github.com/zmb3/spotify/v2"
-
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,9 +16,10 @@ var _ tea.Model = (*audioPlayerModel)(nil)
 type audioPlayerModel struct {
 	width int
 
-	status   client.Status
-	progress int // Progress in seconds
-	bar      progress.Model
+	progress int
+	//duration int
+
+	bar progress.Model
 
 	spotifyState *SpotifyState
 }
@@ -34,13 +32,6 @@ func newAudioPlayer(spotifyState *SpotifyState) audioPlayerModel {
 			progress.WithScaledGradient(PrimaryColor, SecondaryColor),
 			progress.WithoutPercentage(),
 		),
-
-		progress: 0,
-		status: client.Status{
-			Track: client.Track{
-				Duration: 200,
-			},
-		},
 		spotifyState: spotifyState,
 	}
 }
@@ -93,12 +84,28 @@ func (m audioPlayerModel) View() string {
 		Align(lipgloss.Center).
 		Width(8)
 
+	/* var progress = 0 // This is in milliseconds
+	if m.spotifyState != nil &&
+		m.spotifyState.playerState.Item != nil {
+		progress = int(m.spotifyState.playerState.Progress / 1000)
+	} else {
+		log.Println("Error getting progress")
+	} */
+
+	var duration = 0
+	if m.spotifyState != nil &&
+		m.spotifyState.playerState.Item != nil {
+		duration = int(m.spotifyState.playerState.Item.Duration / 1000)
+	} else {
+		log.Println("Error getting duration")
+	}
+
 	// Create the progress bar
-	progressBar := m.bar.ViewAs(float64(m.progress) / float64(m.status.Track.Duration))
+	progressBar := m.bar.ViewAs(float64(m.progress) / float64(duration))
 
 	// Create the time information components
 	currentTime := formatDuration(m.progress)
-	totalDuration := formatDuration(m.status.Track.Duration)
+	totalDuration := formatDuration(duration)
 
 	// Create the progress section (times + bar)
 	progressSection := lipgloss.JoinHorizontal(
@@ -131,20 +138,14 @@ func (m audioPlayerModel) Init() tea.Cmd {
 func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	case StateUpdateMsg:
-		if msg.Type == PlayerStateUpdated {
-			log.Println("Playback controls recieved player state update")
-			if msg.Err != nil {
-				log.Println("Error updating player state")
-				return m, nil
-			}
-			if playerState, ok := msg.Data.(*spotify.PlayerState); ok {
-				log.Println("Updating playback controls with new player state", playerState)
-			} else {
-				log.Println("Error converting data to player state")
-			}
+	case PlayerStateUpdatedMsg:
+		if msg.Err != nil {
+			log.Println("Error updating player state")
 			return m, nil
 		}
+		//TODO: Shouldn't we be syncing state right here?
+
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -152,10 +153,16 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		m.progress++
-		if m.progress >= m.status.Track.Duration {
-			m.progress = 0
+		//log.Println("Recieved tick msg and its playing")
+		if m.spotifyState.playerState.Playing {
+			m.progress += 1
+
+			if m.progress > int(m.spotifyState.playerState.Item.Duration/1000) {
+				m.progress = 0
+			}
+
 		}
+
 		return m, tickCmd()
 
 	}

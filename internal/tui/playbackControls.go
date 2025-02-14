@@ -5,7 +5,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/zmb3/spotify/v2"
 )
 
 var _ tea.Model = (*playbackControlsModel)(nil)
@@ -35,21 +34,15 @@ func (m playbackControlsModel) Init() tea.Cmd {
 
 func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case StateUpdateMsg:
-		if msg.Type == PlayerStateUpdated {
-			log.Println("Playback controls recieved player state update")
-			if msg.Err != nil {
-				log.Println("Error updating player state")
-				return m, nil
-			}
-			if playerState, ok := msg.Data.(*spotify.PlayerState); ok {
-				log.Println("Updating playback controls with new player state", playerState)
-				m.spotifyState.playerState.Playing = playerState.Playing
-			} else {
-				log.Println("Error converting data to player state")
-			}
+	case PlayerStateUpdatedMsg:
+		log.Println("Playback controls recieved player state update")
+		if msg.Err != nil {
+			log.Println("Error updating player state")
 			return m, nil
 		}
+		m.spotifyState.playerState.Playing = msg.State.Playing
+
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

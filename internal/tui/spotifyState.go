@@ -27,25 +27,26 @@ type SpotifyState struct {
 
 	// Currently selected items
 	selectedPlaylistID string
-	selectedTrackID    string
 }
 
-// Message types for state updates
-type StateUpdateMsg struct {
-	Type StateUpdateType
-	Data interface{}
-	Err  error
+type PlaylistsUpdatedMsg struct {
+	Playlists []spotify.SimplePlaylist
+	Err       error
 }
 
-type StateUpdateType int
+type PlaylistSelectedMsg struct {
+	PlaylistID string
+}
 
-const (
-	PlaylistsUpdated StateUpdateType = iota
-	TracksUpdated
-	PlaylistSelected
-	TrackSelected
-	PlayerStateUpdated
-)
+type TracksUpdatedMsg struct {
+	Tracks []spotify.PlaylistItem
+	Err    error
+}
+
+type PlayerStateUpdatedMsg struct {
+	State spotify.PlayerState
+	Err   error
+}
 
 func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	log.Printf("Creating new SpotifyState with client: %v", client != nil)
@@ -55,6 +56,7 @@ func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	}
 }
 
+// TODO: This contains pagination at some point we likely need to refetch multiple pages
 // FetchPlaylists retrieves all playlists for the current user and emits a state update
 func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 	log.Printf("SpotifyState: Starting FetchPlaylists command creation")
@@ -62,26 +64,26 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 		log.Printf("SpotifyState: Executing FetchPlaylists, client: %v", s.client != nil)
 		if s.client == nil {
 			log.Printf("SpotifyState: Error - client is nil")
-			return StateUpdateMsg{
-				Type: PlaylistsUpdated,
-				Err:  fmt.Errorf("spotify client not initialized"),
+			return PlaylistsUpdatedMsg{
+				Err: fmt.Errorf("spotify client not initialized"),
 			}
 		}
 
 		playlists, err := s.client.CurrentUsersPlaylists(context.TODO())
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlists: %v", err)
-			return StateUpdateMsg{
-				Type: PlaylistsUpdated,
-				Err:  err,
+			return PlaylistsUpdatedMsg{
+
+				Err:       err,
+				Playlists: []spotify.SimplePlaylist{},
 			}
 		}
 
 		s.playlists = playlists.Playlists
 		log.Printf("SpotifyState: Successfully fetched %d playlists", len(s.playlists))
-		return StateUpdateMsg{
-			Type: PlaylistsUpdated,
-			Data: s.playlists,
+		return PlaylistsUpdatedMsg{
+			Err:       nil,
+			Playlists: s.playlists,
 		}
 	}
 }
@@ -92,9 +94,9 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 		log.Printf("SpotifyState: Fetching tracks for playlist: %s", playlistID)
 		if playlistID == "" {
 			log.Printf("SpotifyState: Invalid playlist ID")
-			return StateUpdateMsg{
-				Type: TracksUpdated,
-				Err:  fmt.Errorf("invalid playlist ID"),
+			return TracksUpdatedMsg{
+				Err:    fmt.Errorf("invalid playlist ID"),
+				Tracks: []spotify.PlaylistItem{},
 			}
 		}
 
@@ -102,9 +104,9 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 		if cachedItems, exists := s.playlistItemsCache[playlistID]; exists {
 			log.Printf("SpotifyState: Found cached items for playlist %s", playlistID)
 			s.tracks = cachedItems.Items
-			return StateUpdateMsg{
-				Type: TracksUpdated,
-				Data: s.tracks,
+			return TracksUpdatedMsg{
+				Err:    nil,
+				Tracks: cachedItems.Items,
 			}
 		}
 
@@ -113,9 +115,9 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 		playlistItems, err := s.client.GetPlaylistItems(context.TODO(), spotify.ID(playlistID))
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlist items: %v", err)
-			return StateUpdateMsg{
-				Type: TracksUpdated,
-				Err:  err,
+			return TracksUpdatedMsg{
+				Err:    err,
+				Tracks: []spotify.PlaylistItem{},
 			}
 		}
 
@@ -124,21 +126,19 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 		s.tracks = playlistItems.Items
 		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for playlist %s", len(playlistItems.Items), playlistID)
 
-		return StateUpdateMsg{
-			Type: TracksUpdated,
-			Data: s.tracks,
+		return TracksUpdatedMsg{
+			Err:    nil,
+			Tracks: playlistItems.Items,
 		}
 	}
 }
 
 func (s *SpotifyState) SelectPlaylist(playlistID string) tea.Cmd {
 	return func() tea.Msg {
-
 		playlistID = strings.Split(playlistID, ":")[2]
 		s.selectedPlaylistID = playlistID
-		return StateUpdateMsg{
-			Type: PlaylistSelected,
-			Data: playlistID,
+		return PlaylistSelectedMsg{
+			PlaylistID: playlistID,
 		}
 	}
 }
@@ -149,19 +149,17 @@ func (s *SpotifyState) GetPlaybackState() tea.Cmd {
 		state, err := s.client.PlayerState(context.TODO())
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
-			return StateUpdateMsg{
-				Type: PlayerStateUpdated,
-				Err:  fmt.Errorf("invalid playlist ID"),
+			return PlayerStateUpdatedMsg{
+				Err:   fmt.Errorf("failed to get playback state"),
+				State: spotify.PlayerState{},
 			}
 		}
 		log.Println("SpotifyState: Player state:", state)
 
 		s.playerState = *state
-
-		return StateUpdateMsg{
-			Type: PlayerStateUpdated,
-			Data: state,
-			Err:  nil,
+		return PlayerStateUpdatedMsg{
+			Err:   nil,
+			State: *state,
 		}
 	}
 }
@@ -173,7 +171,7 @@ func (s *SpotifyState) StartPlayback() tea.Cmd {
 			return nil
 		}
 
-		return StateUpdateMsg{}
+		return PlayerStateUpdatedMsg{}
 	}
 }
 
@@ -186,7 +184,7 @@ func (s *SpotifyState) PausePlayback() tea.Cmd {
 			return nil
 		}
 
-		return StateUpdateMsg{}
+		return PlayerStateUpdatedMsg{}
 	}
 }
 
@@ -197,14 +195,14 @@ func (s *SpotifyState) NextTrack() tea.Cmd {
 			return nil
 		}
 		//TODO: Implement exponential backoff
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		// We can do this alot smarter by checking if the track has changed
 		state, err := s.client.PlayerState(context.TODO())
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
-			return StateUpdateMsg{
-				Type: PlayerStateUpdated,
-				Err:  fmt.Errorf("invalid playlist ID"),
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
 			}
 		}
 
@@ -212,10 +210,9 @@ func (s *SpotifyState) NextTrack() tea.Cmd {
 
 		s.playerState = *state
 
-		return StateUpdateMsg{
-			Type: PlayerStateUpdated,
-			Data: state,
-			Err:  nil,
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
 		}
 
 	}
@@ -227,16 +224,15 @@ func (s *SpotifyState) PreviousTrack() tea.Cmd {
 			log.Printf("SpotifyState: Error skipping to previous track: %v", err)
 			return nil
 		}
-
 		//TODO: Implement exponential backoff
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		// We can do this alot smarter by checking if the track has changed
 		state, err := s.client.PlayerState(context.TODO())
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
-			return StateUpdateMsg{
-				Type: PlayerStateUpdated,
-				Err:  fmt.Errorf("invalid playlist ID"),
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
 			}
 		}
 
@@ -244,10 +240,9 @@ func (s *SpotifyState) PreviousTrack() tea.Cmd {
 
 		s.playerState = *state
 
-		return StateUpdateMsg{
-			Type: PlayerStateUpdated,
-			Data: state,
-			Err:  nil,
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
 		}
 	}
 }
@@ -260,7 +255,25 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 			log.Printf("SpotifyState: Error playing track: %v", err)
 			return nil
 		}
-		return StateUpdateMsg{}
+
+		time.Sleep(500 * time.Millisecond)
+		// We can do this alot smarter by checking if the track has changed
+		state, err := s.client.PlayerState(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching playback state: %v", err)
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
+			}
+		}
+
+		log.Println("SpotifyState: Player state:", state)
+
+		s.playerState = *state
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
+		}
 	}
 }
 

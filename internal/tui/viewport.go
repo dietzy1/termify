@@ -70,54 +70,47 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 6)
 		log.Printf("Viewport width: %d, height: %d", m.width, m.height)
 
-	case StateUpdateMsg:
-		if msg.Type == TracksUpdated {
-			if msg.Err != nil {
-				log.Printf("Viewport: Error loading tracks: %v", msg.Err)
-				return m, nil
-			}
-
-			// Convert tracks to table rows
-			if tracks, ok := msg.Data.([]spotify.PlaylistItem); ok {
-				log.Printf("Viewport: Converting %d tracks to table rows", len(tracks))
-				var rows []table.Row
-				for i, track := range tracks {
-					if track.Track.Track == nil {
-						log.Printf("Viewport: Warning - Track %d is nil", i+1)
-						continue
-					}
-
-					// Get primary artist name
-					artistName := "Unknown Artist"
-					if len(track.Track.Track.Artists) > 0 {
-						artistName = track.Track.Track.Artists[0].Name
-					}
-
-					// Get album name
-					albumName := "Unknown Album"
-					if track.Track.Track.Album.Name != "" {
-						albumName = track.Track.Track.Album.Name
-					}
-
-					// Format duration
-					duration := formatTrackDuration(int(track.Track.Track.Duration))
-
-					rows = append(rows, table.NewRow(table.RowData{
-						"#":        fmt.Sprintf("%d", i+1),
-						"title":    track.Track.Track.Name,
-						"artist":   artistName,
-						"album":    albumName,
-						"duration": duration,
-					}))
-				}
-
-				log.Printf("Viewport: Setting %d rows to table", len(rows))
-				m.tracks = tracks // Store tracks for selection
-				m.table = m.table.WithRows(rows)
-			} else {
-				log.Printf("Viewport: Failed to convert tracks data: %T", msg.Data)
-			}
+	case TracksUpdatedMsg:
+		if msg.Err != nil {
+			log.Printf("Viewport: Error loading tracks: %v", msg.Err)
 			return m, nil
+		}
+
+		log.Printf("Viewport: Converting %d tracks to table rows", len(msg.Tracks))
+		var rows []table.Row
+		for i, track := range msg.Tracks {
+			if track.Track.Track == nil {
+				log.Printf("Viewport: Warning - Track %d is nil", i+1)
+				continue
+			}
+
+			// Get primary artist name
+			artistName := "Unknown Artist"
+			if len(track.Track.Track.Artists) > 0 {
+				artistName = track.Track.Track.Artists[0].Name
+			}
+
+			// Get album name
+			albumName := "Unknown Album"
+			if track.Track.Track.Album.Name != "" {
+				albumName = track.Track.Track.Album.Name
+			}
+
+			// Format duration
+			duration := formatTrackDuration(int(track.Track.Track.Duration))
+
+			rows = append(rows, table.NewRow(table.RowData{
+				"#":        fmt.Sprintf("%d", i+1),
+				"title":    track.Track.Track.Name,
+				"artist":   artistName,
+				"album":    albumName,
+				"duration": duration,
+			}))
+
+			log.Printf("Viewport: Setting %d rows to table", len(rows))
+			m.tracks = msg.Tracks // Store tracks for selection
+			m.table = m.table.WithRows(rows)
+
 		}
 
 	// Handle keyboard events for table navigation
@@ -131,14 +124,7 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						track := m.tracks[idx-1]
 						if track.Track.Track != nil {
 							log.Printf("Viewport: Selected track: %s", track.Track.Track.ID)
-
 							return m, m.spotifyState.PlayTrack(track.Track.Track.ID)
-							/* return m, func() tea.Msg {
-								return StateUpdateMsg{
-									Type: TrackSelected,
-									Data: string(track.Track.Track.ID),
-								}
-							} */
 						}
 					}
 				}

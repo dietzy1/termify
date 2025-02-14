@@ -15,3 +15,7 @@ func New() *Config {
 		ClientID: "",
 	}
 }
+
+// Settings I would like to configure within the application - Potentially also outside from a yaml file
+// -- Which spotify connect client to use
+// -- If Daemon mode should be enabled (Wether Spotify must be open or we need to start the hacky librespot hacky dacky)
