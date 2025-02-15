@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/authentication"
+	"github.com/pkg/browser"
 	"github.com/zmb3/spotify/v2"
 )
 
@@ -88,6 +89,11 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+
 	case resetCopyMsg:
 		m.authModel.copied = false
 		return m, nil
@@ -99,6 +105,10 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.LoginURL != "" {
+			if err := browser.OpenURL(msg.LoginURL); err != nil {
+				log.Fatal(err)
+			}
+
 			log.Printf("Received login URL: %s", msg.LoginURL)
 			m.authModel.loginURL = msg.LoginURL
 			m.authModel.state = StateAwaitingLogin
@@ -165,14 +175,14 @@ func (m model) viewAuth() string {
 	// Create a box for the main content
 	boxStyle := lipgloss.NewStyle().
 		Padding(2).
-		Width(66). // Fixed width to ensure consistent alignment
+		Width(72). // Fixed width to ensure consistent alignment
 		Align(lipgloss.Center)
 
 	inputStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(BorderColor)).
 		Padding(1, 2).
-		Width(60)
+		Width(66)
 
 	textStyle := lipgloss.NewStyle().
 		PaddingBottom(1)
@@ -190,7 +200,7 @@ func (m model) viewAuth() string {
 
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#FFFFFF")).
-		Width(60). // Fixed width for instructions
+		Width(66). // Fixed width for instructions
 		MarginTop(1).
 		MarginBottom(1)
 
@@ -210,14 +220,27 @@ func (m model) viewAuth() string {
 		Foreground(lipgloss.Color("#FF0000")).
 		MarginTop(1)
 
+	// Define styles for key hints
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(PrimaryColor))
+
+	keyHint := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		"Press ",
+		keyStyle.Render("Enter"),
+		" to continue | ",
+		keyStyle.Render("Ctrl+C"),
+		" to exit",
+	)
+
 	switch m.authModel.state {
 	case StateAwaitingClientID:
 		instructions := []string{
-			"To get started, you'll need a Spotify Client ID:",
-			"1. Go to https://developer.spotify.com/dashboard",
-			"2. Create a new application",
-			"3. Set the redirect URI to http://localhost:8080/callback",
-			"4. Copy your Client ID and paste it below and press center",
+			"Getting started:",
+			"1. Visit https://developer.spotify.com/dashboard",
+			"2. Create a new application in your Spotify Developer Dashboard",
+			"3. Set the redirect URI to http://127.0.0.1:8080/callback",
+			"4. Copy your Client ID from the dashboard",
 		}
 
 		// Create bullet points with the instructions
@@ -251,6 +274,7 @@ func (m model) viewAuth() string {
 					safelyRenderError(m.authModel.err),
 				),
 				inputStyle.Render(m.authModel.input.View()),
+				keyHint,
 			)),
 		))
 

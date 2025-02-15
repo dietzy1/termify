@@ -144,7 +144,7 @@ func (s *SpotifyState) SelectPlaylist(playlistID string) tea.Cmd {
 }
 
 // Get playback state
-func (s *SpotifyState) GetPlaybackState() tea.Cmd {
+func (s *SpotifyState) FetchPlaybackState() tea.Cmd {
 	return func() tea.Msg {
 		state, err := s.client.PlayerState(context.TODO())
 		if err != nil {
@@ -171,7 +171,25 @@ func (s *SpotifyState) StartPlayback() tea.Cmd {
 			return nil
 		}
 
-		return PlayerStateUpdatedMsg{}
+		time.Sleep(500 * time.Millisecond)
+
+		state, err := s.client.PlayerState(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching playback state: %v", err)
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
+			}
+		}
+
+		log.Println("SpotifyState: Player state:", state)
+
+		s.playerState = *state
+
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
+		}
 	}
 }
 
@@ -184,7 +202,25 @@ func (s *SpotifyState) PausePlayback() tea.Cmd {
 			return nil
 		}
 
-		return PlayerStateUpdatedMsg{}
+		time.Sleep(500 * time.Millisecond)
+
+		state, err := s.client.PlayerState(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching playback state: %v", err)
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
+			}
+		}
+
+		log.Println("SpotifyState: Player state:", state)
+
+		s.playerState = *state
+
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
+		}
 	}
 }
 

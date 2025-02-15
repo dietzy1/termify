@@ -5,10 +5,11 @@ go 1.22.5
 require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbles v0.20.0
-	github.com/charmbracelet/bubbletea v1.3.0
+	github.com/charmbracelet/bubbletea v1.3.3
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/evertras/bubble-table v0.17.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/zmb3/spotify/v2 v2.4.3
 	golang.org/x/oauth2 v0.26.0
 )

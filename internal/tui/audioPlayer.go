@@ -25,7 +25,6 @@ type audioPlayerModel struct {
 }
 
 func newAudioPlayer(spotifyState *SpotifyState) audioPlayerModel {
-
 	return audioPlayerModel{
 		width: 0,
 		bar: progress.New(
@@ -84,14 +83,6 @@ func (m audioPlayerModel) View() string {
 		Align(lipgloss.Center).
 		Width(8)
 
-	/* var progress = 0 // This is in milliseconds
-	if m.spotifyState != nil &&
-		m.spotifyState.playerState.Item != nil {
-		progress = int(m.spotifyState.playerState.Progress / 1000)
-	} else {
-		log.Println("Error getting progress")
-	} */
-
 	var duration = 0
 	if m.spotifyState != nil &&
 		m.spotifyState.playerState.Item != nil {
@@ -143,8 +134,7 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("Error updating player state")
 			return m, nil
 		}
-		//TODO: Shouldn't we be syncing state right here?
-
+		m.progress = int(msg.State.Progress / 1000)
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -153,12 +143,17 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		//log.Println("Recieved tick msg and its playing")
 		if m.spotifyState.playerState.Playing {
-			m.progress += 1
+			m.progress++
+			// TODO: We need to handle if the song is paused or stopped
 
 			if m.progress > int(m.spotifyState.playerState.Item.Duration/1000) {
 				m.progress = 0
+				// Refetch the player state to get the next song
+				return m, tea.Batch(
+					m.spotifyState.FetchPlaybackState(),
+					tickCmd(),
+				)
 			}
 
 		}

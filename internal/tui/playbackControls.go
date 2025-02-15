@@ -12,8 +12,7 @@ var _ tea.Model = (*playbackControlsModel)(nil)
 type playbackControlsModel struct {
 	width         int
 	currentButton int
-	//isPlaying     bool
-	volume float64
+	volume        float64
 
 	spotifyState *SpotifyState
 }
@@ -21,10 +20,9 @@ type playbackControlsModel struct {
 func newPlaybackControlsModel(spotifyState *SpotifyState) playbackControlsModel {
 	return playbackControlsModel{
 		currentButton: 1,
-		//isPlaying:     false,
-		volume:       0.5,
-		width:        0,
-		spotifyState: spotifyState,
+		volume:        0.5,
+		width:         0,
+		spotifyState:  spotifyState,
 	}
 }
 
@@ -40,7 +38,7 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("Error updating player state")
 			return m, nil
 		}
-		m.spotifyState.playerState.Playing = msg.State.Playing
+		//m.spotifyState.playerState.Playing = msg.State.Playing
 
 		return m, nil
 
@@ -60,13 +58,11 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Play/Pause button
 			if m.currentButton == 1 {
-				m.spotifyState.playerState.Playing = !m.spotifyState.playerState.Playing
-				/* return m, PlayPause() */
 				if m.spotifyState.playerState.Playing {
-					return m, m.spotifyState.StartPlayback()
+					return m, m.spotifyState.PausePlayback()
 				}
 				if !m.spotifyState.playerState.Playing {
-					return m, m.spotifyState.PausePlayback()
+					return m, m.spotifyState.StartPlayback()
 				}
 			}
 

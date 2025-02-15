@@ -25,7 +25,7 @@ func (m applicationModel) Init() tea.Cmd {
 	return tea.Batch(
 		tea.WindowSize(),
 		m.spotifyState.FetchPlaylists(),
-		m.spotifyState.GetPlaybackState(),
+		m.spotifyState.FetchPlaybackState(),
 		m.audioPlayer.Init(),
 	)
 }
