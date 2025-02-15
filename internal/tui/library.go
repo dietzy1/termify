@@ -26,9 +26,11 @@ type libraryModel struct {
 	height int
 	list   list.Model
 	err    error
+
+	spotifyState *SpotifyState
 }
 
-func newLibrary() libraryModel {
+func newLibrary(spotifyState *SpotifyState) libraryModel {
 	delegate := list.NewDefaultDelegate()
 
 	const itemWidth = 28
@@ -76,7 +78,8 @@ func newLibrary() libraryModel {
 	l.SetShowHelp(false)
 
 	return libraryModel{
-		list: l,
+		list:         l,
+		spotifyState: spotifyState,
 	}
 }
 
@@ -120,13 +123,14 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.list.SetItems(items)
 		log.Println("Library: Successfully updated playlist items")
-		return m, m.emitSelectedPlaylist()
+		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "down":
 			m.list, cmd = m.list.Update(msg)
-			return m, tea.Batch(cmd, m.emitSelectedPlaylist())
+			return m, tea.Batch(cmd, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri)))
+
 		}
 	}
 
@@ -140,16 +144,4 @@ func (m libraryModel) View() string {
 		return fmt.Sprintf("Error loading playlists: %v", m.err)
 	}
 	return m.list.View()
-}
-
-func (m libraryModel) emitSelectedPlaylist() tea.Cmd {
-	if i := m.list.Index(); i != -1 {
-		if p, ok := m.list.SelectedItem().(playlist); ok {
-			log.Printf("Library: Selected playlist: %s", p.uri)
-			return func() tea.Msg {
-				return playlistSelectedMsg{playlistID: p.uri}
-			}
-		}
-	}
-	return nil
 }

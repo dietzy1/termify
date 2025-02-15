@@ -107,7 +107,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"duration": duration,
 			}))
 
-			log.Printf("Viewport: Setting %d rows to table", len(rows))
 			m.tracks = msg.Tracks // Store tracks for selection
 			m.table = m.table.WithRows(rows)
 

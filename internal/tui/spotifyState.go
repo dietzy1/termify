@@ -300,20 +300,3 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 		return StateUpdateMsg{}
 	}
 } */
-
-// GetCurrentTracks returns the currently loaded tracks
-/* func (s *SpotifyState) GetCurrentTracks() []spotify.PlaylistItem {
-	return s.tracks
-}
-
-// GetCurrentPlaylists returns the currently loaded playlists
-func (s *SpotifyState) GetCurrentPlaylists() []spotify.SimplePlaylist {
-	return s.playlists
-}
-
-// GetSelectedPlaylistID returns the ID of the currently selected playlist
-func (s *SpotifyState) GetSelectedPlaylistID() string {
-	return s.selectedPlaylistID
-} */
-
-// SelectPlaylist updates the selected playlist and emits a state update

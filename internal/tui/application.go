@@ -8,17 +8,12 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-// Message types for Spotify events
-type playlistSelectedMsg struct {
-	playlistID string
-}
-
 type applicationModel struct {
 	spotifyState *SpotifyState
 
-	focusedModel    FocusedModel
-	navbar          navbarModel
-	searchBar       searchbarModel
+	focusedModel FocusedModel
+	navbar       navbarModel
+	/* searchBar       searchbarModel */
 	library         libraryModel
 	viewport        viewportModel
 	playbackControl playbackControlsModel
@@ -37,22 +32,21 @@ func (m applicationModel) Init() tea.Cmd {
 
 func newApplication(client *spotify.Client) applicationModel {
 	log.Printf("Application: Creating new application with client: %v", client != nil)
-	// Initialize submodels
 
 	spotifyState := NewSpotifyState(client)
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
 	navbar := newNavbar()
-	searchBar := newSearchbar()
-	library := newLibrary()
+	/* searchBar := newSearchbar() */
+	library := newLibrary(spotifyState)
 	viewport := newViewport(spotifyState)
 	playbackControl := newPlaybackControlsModel(spotifyState)
 	audioPlayer := newAudioPlayer(spotifyState)
 
 	return applicationModel{
-		spotifyState:    spotifyState,
-		navbar:          navbar,
-		searchBar:       searchBar,
+		spotifyState: spotifyState,
+		navbar:       navbar,
+		/* searchBar:       searchBar, */
 		library:         library,
 		viewport:        viewport,
 		playbackControl: playbackControl,
@@ -95,19 +89,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PlaylistSelectedMsg:
 		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
 		return m, tea.Batch(cmds...)
-	}
 
-	// Handle messages that need to be propagated to specific models
-	switch msg := msg.(type) {
-	case playlistSelectedMsg:
-		// When a playlist is selected, update state and fetch tracks
-		return m, tea.Batch(
-			m.spotifyState.SelectPlaylist(msg.playlistID),
-		)
-	}
-
-	// Handle general application messages
-	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -129,7 +111,6 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	}
-
 	return m, tea.Batch(cmds...)
 }
 
