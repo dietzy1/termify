@@ -3,6 +3,7 @@ package tui
 import (
 	"log"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/zmb3/spotify/v2"
@@ -91,16 +92,17 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
-		case "tab":
+		case key.Matches(msg, DefaultKeyMap.CycleFocusForward):
 			m.cycleFocus()
-		case "shift+tab":
+		case key.Matches(msg, DefaultKeyMap.CycleFocusBackward):
 			m.cycleFocusBackward()
 		default:
 			return m.updateFocusedModel(msg)
 		}
+
 	case tea.WindowSizeMsg:
 		log.Printf("Outer viewport width: %d, height: %d", msg.Width, msg.Height)
 		return m.handleWindowSizeMsg(msg)
@@ -137,7 +139,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 4
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{
-		Width: msg.Width - 2,
+		Width: msg.Width,
 	}, m.navbar); ok {
 		m.navbar = updatedNavbar
 		cmds = append(cmds, cmd)

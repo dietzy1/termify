@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -108,7 +109,6 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := browser.OpenURL(msg.LoginURL); err != nil {
 				log.Fatal(err)
 			}
-
 			log.Printf("Received login URL: %s", msg.LoginURL)
 			m.authModel.loginURL = msg.LoginURL
 			m.authModel.state = StateAwaitingLogin
@@ -124,28 +124,23 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC:
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
-		case tea.KeyEnter:
+		case key.Matches(msg, DefaultKeyMap.Select):
 			if m.authModel.state == StateAwaitingClientID {
 				clientID := m.authModel.input.Value()
-
-				//Manually check if client ID is valid
 				if len(clientID) != 32 {
 					m.authModel.err = errClientID
 					return m, nil
 				}
-
 				m.authModel.err = nil
-
 				// Store the auth channel and start listening
 				m.authModel.authChan = m.authModel.auth.StartAuth(context.Background(), clientID)
 				return m, waitForAuth(m.authModel.authChan)
 			}
-		case tea.KeyRunes:
+		case key.Matches(msg, DefaultKeyMap.Copy):
 			if m.authModel.state == StateAwaitingLogin && msg.String() == "c" {
-				// Copy URL to clipboard and set copied state
 				if err := clipboard.WriteAll(m.authModel.loginURL); err != nil {
 					log.Printf("Failed to copy to clipboard: %v", err)
 					return m, nil
@@ -155,7 +150,6 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-
 	// Handle text input updates only if we're awaiting client ID
 	if m.authModel.state == StateAwaitingClientID {
 		m.authModel.input, cmd = m.authModel.input.Update(msg)

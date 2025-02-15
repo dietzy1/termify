@@ -3,6 +3,7 @@ package tui
 import (
 	"log"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -38,24 +39,20 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("Error updating player state")
 			return m, nil
 		}
-		//m.spotifyState.playerState.Playing = msg.State.Playing
-
 		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "left":
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Left):
 			m.currentButton = (m.currentButton - 1 + 3) % 3
-		case "right":
+		case key.Matches(msg, DefaultKeyMap.Right):
 			m.currentButton = (m.currentButton + 1) % 3
-		case "enter", " ":
-			//Skip previous button
+		case key.Matches(msg, DefaultKeyMap.Select):
 			if m.currentButton == 0 {
 				return m, m.spotifyState.PreviousTrack()
 			}
-
 			// Play/Pause button
 			if m.currentButton == 1 {
 				if m.spotifyState.playerState.Playing {
@@ -65,13 +62,11 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.spotifyState.StartPlayback()
 				}
 			}
-
 			//Skip next button
 			if m.currentButton == 2 {
 				return m, m.spotifyState.NextTrack()
 			}
 		}
-
 	}
 	return m, nil
 }

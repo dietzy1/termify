@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -114,9 +115,13 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle keyboard events for table navigation
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			// When enter is pressed, get the selected track and emit a selection message
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down):
+			var tableCmd tea.Cmd
+			m.table, tableCmd = m.table.Update(msg)
+			return m, tableCmd
+
+		case key.Matches(msg, DefaultKeyMap.Select):
 			if selected := m.table.HighlightedRow(); selected.Data != nil {
 				if numStr, ok := selected.Data["#"].(string); ok {
 					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.tracks) {
@@ -129,13 +134,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
-		case "up", "down":
-			var tableCmd tea.Cmd
-			m.table, tableCmd = m.table.Update(msg)
-			return m, tableCmd
 		}
 	}
-
 	// Forward all other messages to the table
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -122,15 +123,13 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.list.SetItems(items)
-		log.Println("Library: Successfully updated playlist items")
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "up", "down":
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down):
 			m.list, cmd = m.list.Update(msg)
 			return m, tea.Batch(cmd, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri)))
-
 		}
 	}
 

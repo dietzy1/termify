@@ -22,7 +22,6 @@ type navbarModel struct {
 }
 
 func newNavbar() navbarModel {
-
 	return navbarModel{}
 }
 
@@ -40,32 +39,24 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m navbarModel) View() string {
 
+	helpText := "? Help "
+	//settings := "⚙ Settings "
+
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
-		Align(lipgloss.Center).Width(m.width).Background(lipgloss.Color(BackgroundColor))
+		Align(lipgloss.Center).
+		Width(m.width - lipgloss.Width(helpText)).
+		Background(lipgloss.Color(BackgroundColor))
 
-	/* searchBarStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor))
-		//Width(m.width)
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(TextColor)).
+		Background(lipgloss.Color(BackgroundColor)).
+		Bold(true).
+		Height(lipgloss.Height(logo)).
+		Align(lipgloss.Center, lipgloss.Center)
 
-	questionMarkStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor))
-
-	containerStyle := lipgloss.NewStyle().
-		Width(m.width)
-
-	joined := lipgloss.JoinHorizontal(
+	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		searchBarStyle.Render(m.textinput.View()),
-		headerStyle.Render(logo),
-		questionMarkStyle.Render("?"),
+		lipgloss.JoinHorizontal(lipgloss.Bottom, headerStyle.Render(logo), helpStyle.Render(helpText)),
 	)
-
-	return containerStyle.Render(
-		joined,
-	) */
-
-	return headerStyle.Render(logo)
 }

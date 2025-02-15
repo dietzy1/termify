@@ -35,6 +35,7 @@ type AppState int
 const (
 	authenticating AppState = iota
 	application
+	help
 )
 
 type model struct {
@@ -43,6 +44,7 @@ type model struct {
 
 	authModel        authModel
 	applicationModel applicationModel
+	helpModel        helpModel
 }
 
 // Config holds the TUI configuration
@@ -60,6 +62,7 @@ func Run(cfg Config) error {
 		state:            authenticating,
 		authModel:        newAuthModel(cfg.AuthService),
 		applicationModel: newApplication(nil),
+		helpModel:        newHelp(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -97,6 +100,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("Updating application model with message type: %T", msg)
 		return m.applicationModel.Update(msg)
 
+	case help:
+		log.Printf("Updating help model with message type: %T", msg)
+		return m.helpModel.Update(msg)
+
 	}
 	return m, nil
 }
@@ -107,6 +114,8 @@ func (m model) View() string {
 		return m.viewAuth()
 	case application:
 		return m.applicationModel.View()
+	case help:
+		return m.helpModel.View()
 	}
 	return "Illegal state"
 }
