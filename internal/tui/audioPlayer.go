@@ -16,11 +16,8 @@ var _ tea.Model = (*audioPlayerModel)(nil)
 type audioPlayerModel struct {
 	width int
 
-	progress int
-	//duration int
-
-	bar progress.Model
-
+	progress     int
+	bar          progress.Model
 	spotifyState *SpotifyState
 }
 
@@ -52,14 +49,21 @@ func (m audioPlayerModel) songInfoView() string {
 		Foreground(lipgloss.Color("#ffffff")).
 		Bold(true).
 		Align(lipgloss.Left).
-		Width(20).
-		Padding(0, 0, 0, 2)
+		Width(28).
+		MarginLeft(2)
 
 	artistStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
 		Align(lipgloss.Left).
-		Width(20).
-		Padding(0, 0, 0, 2)
+		Width(28).
+		MarginLeft(2)
+
+	if m.width < SHRINKWIDTH {
+		titleStyle = titleStyle.MarginLeft(0)
+		artistStyle = artistStyle.MarginLeft(0)
+		titleStyle = titleStyle.Width(20)
+		artistStyle = artistStyle.Width(20)
+	}
 
 	songInfo := lipgloss.JoinVertical(
 		lipgloss.Top,
@@ -71,12 +75,6 @@ func (m audioPlayerModel) songInfoView() string {
 }
 
 func (m audioPlayerModel) View() string {
-
-	volumeSection := lipgloss.NewStyle().
-		Width(20).
-		Render(m.volumeControlView())
-
-	// Time info styling
 	timeInfoStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
 		Bold(true).
@@ -87,8 +85,6 @@ func (m audioPlayerModel) View() string {
 	if m.spotifyState != nil &&
 		m.spotifyState.playerState.Item != nil {
 		duration = int(m.spotifyState.playerState.Item.Duration / 1000)
-	} else {
-		log.Println("Error getting duration")
 	}
 
 	// Create the progress bar
@@ -100,26 +96,18 @@ func (m audioPlayerModel) View() string {
 
 	// Create the progress section (times + bar)
 	progressSection := lipgloss.JoinHorizontal(
-		lipgloss.Left,
+		lipgloss.Center,
 		timeInfoStyle.Render(currentTime),
 		progressBar,
 		timeInfoStyle.Render(totalDuration),
 	)
 
-	// Calculate the remaining width for the progress section
-	remainingWidth := m.width - lipgloss.Width(m.songInfoView()) - 20 // 20 is the fixed width for volume section
+	remainingWidth := m.width - lipgloss.Width(m.songInfoView()) - lipgloss.Width(m.volumeControlView())
 
 	progressStyle := lipgloss.NewStyle().
 		Width(remainingWidth).
 		Align(lipgloss.Center)
-
-	// Combine everything horizontally
-	return lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		m.songInfoView(),
-		progressStyle.Render(progressSection),
-		volumeSection,
-	) + "\n"
+	return progressStyle.Render(progressSection)
 }
 
 func (m audioPlayerModel) Init() tea.Cmd {
@@ -140,16 +128,17 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.bar.Width = msg.Width / 3
+		if m.width < SHRINKWIDTH {
+			m.bar.Width = msg.Width - lipgloss.Width(m.songInfoView()) - lipgloss.Width(m.volumeControlView()) - 20
+		}
 		return m, nil
 
 	case tickMsg:
 		if m.spotifyState.playerState.Playing {
 			m.progress++
-			// TODO: We need to handle if the song is paused or stopped
 
 			if m.progress > int(m.spotifyState.playerState.Item.Duration/1000) {
 				m.progress = 0
-				// Refetch the player state to get the next song
 				return m, tea.Batch(
 					m.spotifyState.FetchPlaybackState(),
 					tickCmd(),
@@ -179,41 +168,41 @@ func tickCmd() tea.Cmd {
 }
 
 func (m audioPlayerModel) volumeControlView() string {
-
-	var volume = 80
-	// Styles for each component
-	iconStyle := lipgloss.NewStyle().
-		Width(2).
-		Align(lipgloss.Left).MarginRight(1)
+	var volume = 0
+	if m.spotifyState != nil {
+		volume = int(m.spotifyState.playerState.Device.Volume)
+	}
 
 	barStyle := lipgloss.NewStyle().
-		Width(13).
-		Align(lipgloss.Left).
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(lipgloss.Color(PrimaryColor)).
+		MarginRight(2)
 
 	emptyBarStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor))
 
-	// Get appropriate volume icon
+	if m.width > SHRINKWIDTH {
+		barStyle.UnsetMarginRight()
+	}
+
 	var volumeIcon string
 	switch {
 	case volume == 0:
-		volumeIcon = "🔇"
+		volumeIcon = "🔇 "
 	case volume < 33:
-		volumeIcon = "🔈"
+		volumeIcon = "🔈 "
 	case volume < 66:
-		volumeIcon = "🔉"
+		volumeIcon = "🔉 "
 	default:
-		volumeIcon = "🔊"
+		volumeIcon = "🔊 "
 	}
 
-	// Calculate bar segments
 	const (
 		volumeChar = "■"
 		emptyChar  = "─"
 	)
-	barWidth := 11 // Fixed width for the bar portion
-	filledCount := int(float64(volume) / 100.0 * float64(barWidth))
+
+	barWidth := 10
+	filledCount := volume / 10
 	emptyCount := barWidth - filledCount
 
 	// Create the volume bar
@@ -221,10 +210,9 @@ func (m audioPlayerModel) volumeControlView() string {
 	empty := emptyBarStyle.Render(strings.Repeat(emptyChar, emptyCount))
 	volumeBar := filled + empty
 
-	// Combine all elements using lipgloss
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		iconStyle.Render(volumeIcon),
+		volumeIcon,
 		barStyle.Render(volumeBar),
 	)
 }

@@ -105,6 +105,12 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.authModel.state = StateAwaitingClientID
 			return m, nil
 		}
+		if msg.Client != nil {
+			log.Printf("Authentication successful")
+			m.authModel.state = StateAuthComplete
+			m = transitionToApplication(m, msg.Client)
+			return m, m.Init()
+		}
 		if msg.LoginURL != "" {
 			if err := browser.OpenURL(msg.LoginURL); err != nil {
 				log.Fatal(err)
@@ -115,12 +121,7 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.authModel.copied = false // Reset copied state when showing new URL
 			return m, waitForAuth(m.authModel.authChan)
 		}
-		if msg.Client != nil {
-			log.Printf("Authentication successful")
-			m.authModel.state = StateAuthComplete
-			m = transitionToReady(m, msg.Client)
-			return m, m.Init()
-		}
+
 		return m, nil
 
 	case tea.KeyMsg:

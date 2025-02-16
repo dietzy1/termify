@@ -20,7 +20,7 @@ type playbackControlsModel struct {
 
 func newPlaybackControlsModel(spotifyState *SpotifyState) playbackControlsModel {
 	return playbackControlsModel{
-		currentButton: 1,
+		currentButton: 2,
 		volume:        0.5,
 		width:         0,
 		spotifyState:  spotifyState,
@@ -46,25 +46,24 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Left):
-			m.currentButton = (m.currentButton - 1 + 3) % 3
+			m.currentButton = (m.currentButton - 1 + 5) % 5
 		case key.Matches(msg, DefaultKeyMap.Right):
-			m.currentButton = (m.currentButton + 1) % 3
+			m.currentButton = (m.currentButton + 1) % 5
 		case key.Matches(msg, DefaultKeyMap.Select):
-			if m.currentButton == 0 {
+			switch m.currentButton {
+			case 0:
+				return m, m.spotifyState.ToggleShuffleMode()
+			case 1:
 				return m, m.spotifyState.PreviousTrack()
-			}
-			// Play/Pause button
-			if m.currentButton == 1 {
+			case 2:
 				if m.spotifyState.playerState.Playing {
 					return m, m.spotifyState.PausePlayback()
 				}
-				if !m.spotifyState.playerState.Playing {
-					return m, m.spotifyState.StartPlayback()
-				}
-			}
-			//Skip next button
-			if m.currentButton == 2 {
+				return m, m.spotifyState.StartPlayback()
+			case 3:
 				return m, m.spotifyState.NextTrack()
+			case 4:
+				return m, m.spotifyState.ToggleRepeatMode()
 			}
 		}
 	}
@@ -76,7 +75,7 @@ func (m playbackControlsModel) View() string {
 	var baseStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
 		Bold(true).
-		Padding(0, 2).
+		Padding(0, 3).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(BorderColor))
 
@@ -84,29 +83,67 @@ func (m playbackControlsModel) View() string {
 		Foreground(lipgloss.Color(PrimaryColor)).
 		BorderForeground(lipgloss.Color(PrimaryColor))
 
+	if m.width < SHRINKWIDTH {
+		baseStyle = baseStyle.Padding(0, 1)
+		activeStyle = activeStyle.Padding(0, 1)
+	}
+
+	shuffleButton := "⇄"
 	prevButton := "⏮"
 	playPauseButton := "▶"
 	nextButton := "⏭"
+	repeatButton := "↺"
+	playPauseHelper := "Play"
+
+	// Get current states (changed from string comparison to boolean)
+	shuffleState := m.spotifyState.playerState.ShuffleState
+	repeatState := m.spotifyState.playerState.RepeatState
 
 	if m.spotifyState.playerState.Playing {
 		playPauseButton = "⏸"
+		playPauseHelper = "Pause"
 	}
 
-	buttons := []string{prevButton, playPauseButton, nextButton}
+	buttons := []string{shuffleButton, prevButton, playPauseButton, nextButton, repeatButton}
+	helperTexts := []string{"Shuffle", "Previous", playPauseHelper, "Next", "Repeat"}
 	var renderedButtons []string
 
 	for i, button := range buttons {
+		helperContent := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			Width(8).
+			Render(" ")
+
 		if i == m.currentButton {
-			renderedButtons = append(renderedButtons, activeStyle.Render(button))
-		} else {
-			renderedButtons = append(renderedButtons, baseStyle.Render(button))
+			helperContent = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(TextColor)).
+				Width(8).
+				Align(lipgloss.Center).
+				Render(helperTexts[i])
 		}
+
+		var btn string
+		switch {
+		case i == m.currentButton:
+			btn = activeStyle.Render(button)
+		case (i == 0 && shuffleState) || (i == 4 && repeatState == "context"):
+			btn = baseStyle.Foreground(lipgloss.Color(PrimaryColor)).Render(button)
+		default:
+			btn = baseStyle.Render(button)
+		}
+
+		// Maintain consistent dimensions for all buttons
+		renderedButton := lipgloss.JoinVertical(lipgloss.Center,
+			lipgloss.NewStyle().Padding(0, 1).Render(btn), // Add horizontal padding
+			helperContent,
+		)
+		renderedButtons = append(renderedButtons, renderedButton)
 	}
 
 	playbackControls := lipgloss.JoinHorizontal(lipgloss.Bottom, renderedButtons...)
 
 	containerStyle := lipgloss.NewStyle().
-		Width(m.width).
+		/* Width(m.width-30). */
 		Foreground(lipgloss.Color(TextColor)).
 		Align(lipgloss.Center, lipgloss.Center)
 

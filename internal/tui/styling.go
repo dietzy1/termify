@@ -7,3 +7,5 @@ const (
 	BorderColor     = "#535353"
 	TextColor       = "#b3b3b3"
 )
+
+const SHRINKWIDTH = 80

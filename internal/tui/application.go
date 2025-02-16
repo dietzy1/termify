@@ -10,6 +10,7 @@ import (
 )
 
 type applicationModel struct {
+	width        int
 	spotifyState *SpotifyState
 
 	focusedModel FocusedModel
@@ -119,23 +120,31 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m applicationModel) View() string {
 	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
 	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
-	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl)
+	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
 
 	viewport := viewportStyle.Render(m.viewport.View())
 	library := libraryStyle.Render(m.library.View())
-	playback := m.playbackControl.View()
 	audioPlayer := m.audioPlayer.View()
 
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		m.navbar.View(),
 		lipgloss.JoinHorizontal(lipgloss.Top, library, viewport),
-		combinedPlaybackSectionStyle.Render(lipgloss.JoinVertical(lipgloss.Center, playback, audioPlayer)),
+		combinedPlaybackSectionStyle.Render(
+			lipgloss.JoinHorizontal(lipgloss.Bottom,
+				m.audioPlayer.songInfoView(),
+				lipgloss.JoinVertical(lipgloss.Center,
+					m.playbackControl.View(),
+					audioPlayer,
+				),
+				m.audioPlayer.volumeControlView()),
+		),
 	)
 }
 
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {
 	var cmds []tea.Cmd
+	m.width = msg.Width
 	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 4
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{

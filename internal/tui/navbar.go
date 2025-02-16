@@ -45,7 +45,7 @@ func (m navbarModel) View() string {
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
 		Align(lipgloss.Center).
-		Width(m.width - lipgloss.Width(helpText)).
+		Width(m.width - 7 - lipgloss.Width(helpText)).
 		Background(lipgloss.Color(BackgroundColor))
 
 	helpStyle := lipgloss.NewStyle().
@@ -57,6 +57,6 @@ func (m navbarModel) View() string {
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Bottom, headerStyle.Render(logo), helpStyle.Render(helpText)),
+		lipgloss.JoinHorizontal(lipgloss.Bottom, helpStyle.Render("       "), headerStyle.Render(logo), helpStyle.Render(helpText)),
 	)
 }

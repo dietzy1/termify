@@ -313,6 +313,68 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 	}
 }
 
+func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
+	return func() tea.Msg {
+		if err := s.client.Shuffle(context.TODO(), !s.playerState.ShuffleState); err != nil {
+			log.Printf("SpotifyState: Error toggling shuffle mode: %v", err)
+			return nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
+		// We can do this alot smarter by checking if the track has changed
+		state, err := s.client.PlayerState(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching playback state: %v", err)
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
+			}
+		}
+
+		log.Println("SpotifyState: Player state:", state)
+
+		s.playerState = *state
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
+		}
+	}
+}
+
+func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
+	return func() tea.Msg {
+		// Determine new repeat state based on current state
+		var newState string
+		if s.playerState.RepeatState == "off" {
+			newState = "context"
+		} else {
+			newState = "off"
+		}
+
+		if err := s.client.Repeat(context.TODO(), newState); err != nil {
+			log.Printf("SpotifyState: Error setting repeat mode: %v", err)
+			return nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
+		state, err := s.client.PlayerState(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching playback state: %v", err)
+			return PlayerStateUpdatedMsg{
+				State: spotify.PlayerState{},
+				Err:   fmt.Errorf("invalid playlist ID"),
+			}
+		}
+
+		log.Println("SpotifyState: Player state:", state)
+		s.playerState = *state
+		return PlayerStateUpdatedMsg{
+			State: *state,
+			Err:   nil,
+		}
+	}
+}
+
 // We need to look at current playback and check if isPlaying is true firstly
 // We then need to compare progressMS  with durationMs and if it is equal then we need to refetch the current playback state and update the UI
 

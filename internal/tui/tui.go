@@ -80,7 +80,7 @@ func Run(cfg Config) error {
 	return nil
 }
 
-func transitionToReady(m model, spotifyClient *spotify.Client) model {
+func transitionToApplication(m model, spotifyClient *spotify.Client) model {
 	return model{
 		width:            m.width,
 		height:           m.height,
@@ -91,7 +91,6 @@ func transitionToReady(m model, spotifyClient *spotify.Client) model {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	switch m.state {
 	case authenticating:
 		log.Printf("Updating authentication model with message type: %T", msg)
