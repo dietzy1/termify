@@ -15,6 +15,7 @@ import (
 type SpotifyState struct {
 	client *spotify.Client
 
+	deviceState spotify.PlayerDevice
 	//Currently playing state
 	playerState spotify.PlayerState
 
@@ -380,6 +381,23 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 
 //TODO: this is actually important this if no device is active then we cannot play anything
 // TODO: We need to figure out if we also want to go with the librespot daemon way and perhabs use interfaces to define similar behaviour.
+
+func (s *SpotifyState) FetchDevices() tea.Cmd {
+	return func() tea.Msg {
+		devices, err := s.client.PlayerDevices(context.TODO())
+		if err != nil {
+			log.Printf("SpotifyState: Error fetching player devices: %v", err)
+			return nil
+		}
+		for _, device := range devices {
+			log.Printf("SpotifyState: Found device: %v", device.Name)
+		}
+		// This is unsafe and bad TODO: fix this later
+		s.deviceState = devices[0]
+		return nil
+	}
+}
+
 /* func (s *SpotifyState) TransferPlaybackToTermify() tea.Cmd {
 
 	return func() tea.Msg {
