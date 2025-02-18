@@ -59,7 +59,7 @@ func newLibrary(spotifyState *SpotifyState) libraryModel {
 
 	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
-		Padding(0, 0, 0, 1).
+		Padding(0, 0, 0, 2).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
