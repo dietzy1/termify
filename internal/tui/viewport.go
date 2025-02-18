@@ -68,6 +68,13 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+
+		// This check is a panic safeguard
+		if m.height-6 < 0 {
+			m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(1)
+			return m, nil
+		}
+
 		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 6)
 		log.Printf("Viewport width: %d, height: %d", m.width, m.height)
 
