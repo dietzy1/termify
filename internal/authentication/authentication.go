@@ -76,7 +76,9 @@ func (s *SpotifyAuth) initialize(clientID string) {
 			spotifyauth.ScopeUserReadPrivate,
 			spotifyauth.ScopePlaylistReadCollaborative,
 			spotifyauth.ScopeUserReadPlaybackState,
-			spotifyauth.ScopeUserModifyPlaybackState),
+			spotifyauth.ScopeUserModifyPlaybackState,
+			spotifyauth.ScopeUserLibraryRead,
+		),
 	)
 }
 
@@ -173,6 +175,7 @@ func (s *SpotifyAuth) completeAuth(w http.ResponseWriter, r *http.Request) {
 
 	client := spotify.New(s.auth.Client(r.Context(), tok))
 
+	log.Println("Sending client to authComplete channel")
 	s.authComplete <- AuthResult{
 		Client: client,
 	}

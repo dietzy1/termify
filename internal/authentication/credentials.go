@@ -82,7 +82,6 @@ func (cm *credentialManager) LoadToken() (*oauth2.Token, error) {
 	}
 
 	return &oauth2.Token{
-
 		AccessToken:  creds.AccessToken,
 		TokenType:    creds.TokenType,
 		RefreshToken: creds.RefreshToken,

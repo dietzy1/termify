@@ -5,23 +5,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const logo = `
- ______              _ ___    
+// Dont format
+const logo = ` ______              _ ___    
 /_  __/__ ______ _  (_) _/_ __
  / / / -_) __/  ' \/ / _/ // /
 /_/  \__/_/ /_/_/_/_/_/ \_, / 
-                       /___/  
-`
+                       /___/  `
 
 var _ tea.Model = (*navbarModel)(nil)
 
 type navbarModel struct {
 	width int
-
-	//textinput textinput.Model
 }
 
 func newNavbar() navbarModel {
+
 	return navbarModel{}
 }
 
@@ -38,25 +36,43 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m navbarModel) View() string {
-
-	helpText := "? Help "
-	//settings := "⚙ Settings "
-
-	headerStyle := lipgloss.NewStyle().
+	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
-		Align(lipgloss.Center).
-		Width(m.width - 7 - lipgloss.Width(helpText)).
-		Background(lipgloss.Color(BackgroundColor))
+		Bold(true)
 
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
-		Background(lipgloss.Color(BackgroundColor)).
-		Bold(true).
-		Height(lipgloss.Height(logo)).
-		Align(lipgloss.Center, lipgloss.Center)
-
-	return lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Bottom, helpStyle.Render("       "), headerStyle.Render(logo), helpStyle.Render(helpText)),
+	helpText := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render("? "),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			Render("Help"),
 	)
+
+	settings := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render("s "),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			Render("Settings"),
+	)
+
+	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
+		settings,
+		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(helpText),
+	)
+
+	leftSection := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(PrimaryColor)).
+		MarginLeft(1).
+		Render(logo)
+
+	// Create a full-width container with left and right sections
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Render(
+			lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				leftSection,
+				lipgloss.NewStyle().Width(m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection)).Render(""),
+				rightSection,
+			),
+		)
 }

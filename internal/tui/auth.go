@@ -318,6 +318,7 @@ func (m *authModel) Init() tea.Cmd {
 		return nil
 	}
 	log.Printf("Found stored client ID: %s", clientID)
+	m.state = StateAwaitingLogin
 
 	m.authChan = m.auth.StartAuth(context.Background(), clientID)
 	return waitForAuth(m.authChan)

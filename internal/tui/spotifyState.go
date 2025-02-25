@@ -389,6 +389,12 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 			log.Printf("SpotifyState: Error fetching player devices: %v", err)
 			return nil
 		}
+
+		if len(devices) == 0 {
+			log.Println("SpotifyState: No devices found")
+			return nil
+		}
+
 		for _, device := range devices {
 			log.Printf("SpotifyState: Found device: %v", device.Name)
 		}

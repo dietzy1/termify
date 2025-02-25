@@ -53,20 +53,9 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m searchbarModel) View() string {
-
-	// I want to make it so the logo is to the left and the search bar is in the middle and some question mark help icon is to the right
-
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
-		Width(m.width)
-		/*
-			return lipgloss.NewStyle().
-				Background(lipgloss.Color(BackgroundColor)).
-				Render(m.textInput.View()) */
+		BorderForeground(lipgloss.Color(BorderColor))
+
 	return borderStyle.Render(m.textInput.View())
-
-	//var result = lipgloss.JoinHorizontal(logo, lipgloss.Bottom, borderStyle.Render(m.textInput.View()), iconStyle.Render("?"))
-	//return result
-
 }
