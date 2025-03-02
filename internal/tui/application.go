@@ -125,7 +125,31 @@ func (m applicationModel) View() string {
 
 	viewport := viewportStyle.Render(m.viewport.View())
 	library := libraryStyle.Render(m.library.View())
-	audioPlayer := m.audioPlayer.View()
+
+	// Get the song info and volume control views
+	songInfoView := m.audioPlayer.songInfoView()
+	volumeControlView := m.audioPlayer.volumeControlView()
+
+	// Calculate the available width for the center section
+	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
+
+	// Center both components individually
+	centeredPlaybackControls := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		Render(m.playbackControl.View())
+
+	centeredAudioPlayer := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		Render(m.audioPlayer.View())
+
+	// Join them vertically
+	centerSection := lipgloss.JoinVertical(
+		lipgloss.Center,
+		centeredPlaybackControls,
+		centeredAudioPlayer,
+	)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -133,12 +157,9 @@ func (m applicationModel) View() string {
 		lipgloss.JoinHorizontal(lipgloss.Top, library, viewport),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
-				m.audioPlayer.songInfoView(),
-				lipgloss.JoinVertical(lipgloss.Center,
-					m.playbackControl.View(),
-					audioPlayer,
-				),
-				m.audioPlayer.volumeControlView()),
+				songInfoView,
+				centerSection,
+				volumeControlView),
 		),
 	)
 }

@@ -71,9 +71,7 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m playbackControlsModel) View() string {
-
 	var baseStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
 		Bold(true).
 		Padding(0, 3).
 		BorderStyle(lipgloss.RoundedBorder()).
@@ -112,7 +110,8 @@ func (m playbackControlsModel) View() string {
 		helperContent := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
 			Width(8).
-			Render(" ")
+			Align(lipgloss.Center).
+			Render(" ")
 
 		if i == m.currentButton {
 			helperContent = lipgloss.NewStyle().
@@ -132,22 +131,12 @@ func (m playbackControlsModel) View() string {
 			btn = baseStyle.Render(button)
 		}
 
-		// Maintain consistent dimensions for all buttons
 		renderedButton := lipgloss.JoinVertical(lipgloss.Center,
-			lipgloss.NewStyle().Padding(0, 1).Render(btn), // Add horizontal padding
+			lipgloss.NewStyle().Padding(0, 1).Render(btn),
 			helperContent,
 		)
 		renderedButtons = append(renderedButtons, renderedButton)
 	}
 
-	playbackControls := lipgloss.JoinHorizontal(lipgloss.Bottom, renderedButtons...)
-
-	containerStyle := lipgloss.NewStyle().
-		/* Width(m.width-30). */
-		Foreground(lipgloss.Color(TextColor)).
-		Align(lipgloss.Center, lipgloss.Center)
-
-	return containerStyle.Render(
-		playbackControls,
-	)
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, renderedButtons...)
 }

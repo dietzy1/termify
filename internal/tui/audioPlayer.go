@@ -102,12 +102,7 @@ func (m audioPlayerModel) View() string {
 		timeInfoStyle.Render(totalDuration),
 	)
 
-	remainingWidth := m.width - lipgloss.Width(m.songInfoView()) - lipgloss.Width(m.volumeControlView())
-
-	progressStyle := lipgloss.NewStyle().
-		Width(remainingWidth).
-		Align(lipgloss.Center)
-	return progressStyle.Render(progressSection)
+	return progressSection
 }
 
 func (m audioPlayerModel) Init() tea.Cmd {
@@ -127,10 +122,19 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.bar.Width = msg.Width / 3
+
+		// Calculate the available width for the progress bar
+		songInfoWidth := lipgloss.Width(m.songInfoView())
+		volumeControlWidth := lipgloss.Width(m.volumeControlView())
+		timeInfoWidth := 8 // 8 for each time display
+
+		// Set the progress bar width based on available space
+		m.bar.Width = m.width - songInfoWidth - volumeControlWidth - timeInfoWidth - timeInfoWidth
+
 		if m.width < SHRINKWIDTH {
-			m.bar.Width = msg.Width - lipgloss.Width(m.songInfoView()) - lipgloss.Width(m.volumeControlView()) - 20
+			m.bar.Width = m.width - songInfoWidth - volumeControlWidth - timeInfoWidth - timeInfoWidth
 		}
+
 		return m, nil
 
 	case tickMsg:
@@ -180,10 +184,6 @@ func (m audioPlayerModel) volumeControlView() string {
 	emptyBarStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor))
 
-	if m.width > SHRINKWIDTH {
-		barStyle.UnsetMarginRight()
-	}
-
 	var volumeIcon string
 	switch {
 	case volume == 0:
@@ -210,9 +210,20 @@ func (m audioPlayerModel) volumeControlView() string {
 	empty := emptyBarStyle.Render(strings.Repeat(emptyChar, emptyCount))
 	volumeBar := filled + empty
 
-	return lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		volumeIcon,
-		barStyle.Render(volumeBar),
+	// Create a container with fixed width and left alignment
+	containerStyle := lipgloss.NewStyle().
+		Width(28).
+		Align(lipgloss.Right)
+
+	if m.width < SHRINKWIDTH {
+		containerStyle = containerStyle.Width(20)
+	}
+
+	return containerStyle.Render(
+		lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			volumeIcon,
+			barStyle.Render(volumeBar),
+		),
 	)
 }
