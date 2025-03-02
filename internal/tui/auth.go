@@ -73,8 +73,65 @@ func resetCopyAfterDelay() tea.Cmd {
 // waitForAuth returns a command that listens to the auth channel
 func waitForAuth(authChan <-chan authentication.AuthResult) tea.Cmd {
 	return func() tea.Msg {
-		result := <-authChan
-		log.Println("Waited for auth result:", result)
+		log.Println("Waiting for auth result from channel...")
+		result, ok := <-authChan
+		if !ok {
+			log.Println("Auth channel closed without receiving any result")
+			// Return an empty AuthChannelMsg to avoid blocking
+			return AuthChannelMsg{}
+		}
+
+		log.Println("Received auth result:", result)
+
+		// If we got a login URL, we need to continue waiting for the client
+		if result.LoginURL != "" && result.Client == nil && result.Error == nil {
+			log.Println("Auth result contains only a login URL, returning it and continuing to wait")
+			// Return the login URL message but also set up a command to continue waiting
+			return tea.Batch(
+				func() tea.Msg {
+					return AuthChannelMsg{
+						LoginURL: result.LoginURL,
+					}
+				},
+				waitForNextAuthResult(authChan),
+			)()
+		}
+
+		// Otherwise, return the result as is
+		if result.Client != nil {
+			log.Println("Auth result contains a client")
+		}
+		if result.Error != nil {
+			log.Println("Auth result contains an error:", result.Error)
+		}
+
+		return AuthChannelMsg{
+			LoginURL: result.LoginURL,
+			Client:   result.Client,
+			Error:    result.Error,
+		}
+	}
+}
+
+// waitForNextAuthResult continues waiting for the next message from the auth channel
+func waitForNextAuthResult(authChan <-chan authentication.AuthResult) tea.Cmd {
+	return func() tea.Msg {
+		log.Println("Continuing to wait for auth result...")
+		result, ok := <-authChan
+		if !ok {
+			log.Println("Auth channel closed without receiving client or error")
+			// Return an empty AuthChannelMsg to avoid blocking
+			return AuthChannelMsg{}
+		}
+
+		log.Println("Received next auth result:", result)
+		if result.Client != nil {
+			log.Println("Auth result contains a client")
+		}
+		if result.Error != nil {
+			log.Println("Auth result contains an error:", result.Error)
+		}
+
 		return AuthChannelMsg{
 			LoginURL: result.LoginURL,
 			Client:   result.Client,
@@ -99,6 +156,10 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.authModel.copied = false
 		return m, nil
 	case AuthChannelMsg:
+		log.Printf("Processing AuthChannelMsg: Error=%v, Client=%v, LoginURL=%v",
+			msg.Error != nil,
+			msg.Client != nil,
+			msg.LoginURL != "")
 		if msg.Error != nil {
 			log.Printf("Authentication error: %v", msg.Error)
 			m.authModel.err = msg.Error
@@ -106,7 +167,7 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.Client != nil {
-			log.Printf("Authentication successful")
+			log.Printf("Authentication successful, transitioning to application")
 			m.authModel.state = StateAuthComplete
 			m = transitionToApplication(m, msg.Client)
 			return m, m.Init()
@@ -117,11 +178,24 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			log.Printf("Received login URL: %s", msg.LoginURL)
 			m.authModel.loginURL = msg.LoginURL
+
+			// If we're already in the StateAwaitingLogin state, we don't need to set up another waitForAuth command
+			// This happens when we're using a stored client ID and we've already set up the waitForAuth command in Init()
+			alreadyWaiting := m.authModel.state == StateAwaitingLogin
+
 			m.authModel.state = StateAwaitingLogin
 			m.authModel.copied = false // Reset copied state when showing new URL
+
+			if alreadyWaiting {
+				log.Println("Already in StateAwaitingLogin, not setting up another waitForAuth command")
+				return m, nil
+			}
+
+			log.Println("Setting up waitForAuth command")
 			return m, waitForAuth(m.authModel.authChan)
 		}
 
+		log.Printf("AuthChannelMsg didn't match any condition, no action taken")
 		return m, nil
 
 	case tea.KeyMsg:
@@ -313,14 +387,19 @@ func (m model) viewAuth() string {
 // The change we need to make here is that it needs to check the credential manager for a stored client ID
 // If that exists then we can change the state to StateAwaitingLogin and start the auth process
 func (m *authModel) Init() tea.Cmd {
+	log.Println("Initializing authModel")
 	clientID := m.auth.GetClientID()
 	if clientID == "" {
+		log.Println("No stored client ID found, waiting for user input")
 		return nil
 	}
 	log.Printf("Found stored client ID: %s", clientID)
+	log.Println("Setting state to StateAwaitingLogin")
 	m.state = StateAwaitingLogin
 
+	log.Println("Starting auth with stored client ID")
 	m.authChan = m.auth.StartAuth(context.Background(), clientID)
+	log.Println("Returning waitForAuth command")
 	return waitForAuth(m.authChan)
 }
 

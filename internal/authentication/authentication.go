@@ -85,31 +85,33 @@ func (s *SpotifyAuth) initialize(clientID string) {
 // StartAuth begins the authentication process
 // It returns a channel that will receive auth status updates
 func (s *SpotifyAuth) StartAuth(ctx context.Context, clientID string) chan AuthResult {
+	log.Printf("StartAuth called with client ID: %s", clientID)
 	s.initialize(clientID)
 
 	// First, try to load existing token
 	token, err := s.credManager.LoadToken()
 	if err != nil {
+		log.Printf("Failed to load token: %v", err)
 		s.authComplete <- AuthResult{
 			Error: fmt.Errorf("failed to load token: %w", err),
 		}
-		log.Printf("Failed to load token: %v", err)
 		return s.authComplete
 	}
 
 	// If we have a valid token, create and return the client immediately
 	if token != nil && token.Valid() {
+		log.Printf("Found valid token, creating client and returning immediately")
 		client := spotify.New(s.auth.Client(ctx, token))
 		s.authComplete <- AuthResult{
 			Client: client,
 		}
+		log.Printf("Closing authComplete channel (valid token path)")
 		close(s.authComplete)
-		//TODO:  Should we also just close the webserver here?
-
 		log.Printf("Using existing credentials")
 		return s.authComplete
 	}
 
+	log.Printf("No valid token found, starting PKCE flow")
 	// If we have no token or it's expired, start the PKCE flow
 
 	// Generate the challenge from verifier
@@ -126,6 +128,7 @@ func (s *SpotifyAuth) StartAuth(ctx context.Context, clientID string) chan AuthR
 		authParams...,
 	)
 
+	log.Printf("Generated login URL: %s", url)
 	s.authComplete <- AuthResult{
 		LoginURL: url,
 	}
@@ -133,11 +136,13 @@ func (s *SpotifyAuth) StartAuth(ctx context.Context, clientID string) chan AuthR
 	// Handle context cancellation
 	go func() {
 		<-ctx.Done()
+		log.Printf("Context cancelled, sending error to authComplete channel")
 		s.authComplete <- AuthResult{
 			Error: ctx.Err(),
 		}
 		close(s.authComplete)
 	}()
+	log.Printf("Returning authComplete channel")
 	return s.authComplete
 }
 
@@ -145,10 +150,12 @@ func (s *SpotifyAuth) StartAuth(ctx context.Context, clientID string) chan AuthR
 var content embed.FS
 
 func (s *SpotifyAuth) completeAuth(w http.ResponseWriter, r *http.Request) {
+	log.Println("Callback received, processing authentication completion")
 	verifierParams := s.verifier.params()
 
 	tok, err := s.auth.Token(r.Context(), s.state, r, verifierParams...)
 	if err != nil {
+		log.Printf("Token error: %v", err)
 		s.authComplete <- AuthResult{
 			Error: fmt.Errorf("token error: %w", err),
 		}
@@ -156,22 +163,27 @@ func (s *SpotifyAuth) completeAuth(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to get token: %v", err)
 		return
 	}
+	log.Printf("Token successfully obtained")
 
 	if st := r.FormValue("state"); st != s.state {
+		log.Printf("State mismatch: expected %s, got %s", s.state, st)
 		s.authComplete <- AuthResult{
 			Error: fmt.Errorf("state mismatch"),
 		}
 		http.Error(w, "State verification failed", http.StatusBadRequest)
 		return
 	}
+	log.Printf("State verification successful")
 
 	if err := s.credManager.SaveToken(tok, s.clientID); err != nil {
+		log.Printf("Failed to save token: %v", err)
 		s.authComplete <- AuthResult{
 			Error: fmt.Errorf("failed to save token: %w", err),
 		}
 		http.Error(w, "Failed to save credentials", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("Token successfully saved")
 
 	client := spotify.New(s.auth.Client(r.Context(), tok))
 
@@ -179,14 +191,18 @@ func (s *SpotifyAuth) completeAuth(w http.ResponseWriter, r *http.Request) {
 	s.authComplete <- AuthResult{
 		Client: client,
 	}
+	log.Println("Closing authComplete channel")
+	close(s.authComplete)
 
 	// Read the embedded HTML file
 	htmlContent, err := content.ReadFile("login_complete.html")
 	if err != nil {
+		log.Printf("Failed to load completion page: %v", err)
 		http.Error(w, "Failed to load completion page", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.Writer.Write(w, htmlContent)
+	log.Println("Callback processing complete, HTML response sent")
 }
