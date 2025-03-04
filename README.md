@@ -1,9 +1,10 @@
+```
  ______              _ ___    
 /_  __/__ ______ _  (_) _/_ __
  / / / -_) __/  ' \/ / _/ // /
 /_/  \__/_/ /_/_/_/_/_/ \_, / 
                        /___/  
-
+```
 > A sleek, feature-rich Spotify TUI (Terminal User Interface) client written in Go
 
 ![Termify Screenshot](https://github.com/dietzy1/termify/raw/main/assets/screenshot.png)
