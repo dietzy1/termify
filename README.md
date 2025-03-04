@@ -1,4 +1,8 @@
-# 🎵 Termify
+ ______              _ ___    
+/_  __/__ ______ _  (_) _/_ __
+ / / / -_) __/  ' \/ / _/ // /
+/_/  \__/_/ /_/_/_/_/_/ \_, / 
+                       /___/  
 
 > A sleek, feature-rich Spotify TUI (Terminal User Interface) client written in Go
 
@@ -17,8 +21,6 @@
 ## 🚀 Installation
 
 ### Prerequisites
-
-- Go 1.16 or higher
 - A Spotify account (Premium required for full playback functionality)
 
 ### From Source
@@ -50,7 +52,7 @@ On first run, Termify will:
 3. Request necessary permissions
 4. Redirect back to the application
 
-Your credentials are securely stored for future sessions.
+Your token is stored for future sessions.
 
 ## 🎮 Usage
 
@@ -107,16 +109,6 @@ go mod download
 # Run in development mode
 go run main.go
 ```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📝 License
 
