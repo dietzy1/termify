@@ -23,6 +23,7 @@ type applicationModel struct {
 	audioPlayer     audioPlayerModel
 
 	helpModel helpModel
+	showHelp  bool
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -119,8 +120,10 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m applicationModel) View() string {
+	if m.showHelp {
+		return m.viewHelp()
+	}
 
-	/* 	return m.viewHelp() */
 	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
 	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
 	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
@@ -267,7 +270,16 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, DefaultKeyMap.Help):
+		m.showHelp = !m.showHelp
 		return m, nil, true
+	}
+
+	// If we're in help mode, check for Return key to exit help
+	if m.showHelp {
+		if key.Matches(msg, DefaultKeyMap.Return) {
+			m.showHelp = false
+			return m, nil, true
+		}
 	}
 
 	log.Println("Unhandled key:", msg)

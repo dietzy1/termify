@@ -30,14 +30,7 @@ func (m helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Println("Help: Window size message received", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
-
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Return):
-			log.Println("Help: Return key pressed")
-		}
 	}
-
 	return m, nil
 }
 
