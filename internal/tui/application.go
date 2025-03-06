@@ -7,11 +7,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/zmb3/spotify/v2"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 type applicationModel struct {
 	width        int
-	spotifyState *SpotifyState
+	spotifyState *state.SpotifyState
 
 	focusedModel FocusedModel
 	navbar       navbarModel
@@ -36,7 +37,7 @@ func (m applicationModel) Init() tea.Cmd {
 func newApplication(client *spotify.Client) applicationModel {
 	log.Printf("Application: Creating new application with client: %v", client != nil)
 
-	spotifyState := NewSpotifyState(client)
+	spotifyState := state.NewSpotifyState(client)
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
 	navbar := newNavbar()
@@ -61,7 +62,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case PlayerStateUpdatedMsg:
+	case state.PlayerStateUpdatedMsg:
 		// Update playbackControl with new state
 		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
 			m.playbackControl = updatedPlaybackControl
@@ -74,14 +75,14 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case PlaylistsUpdatedMsg:
+	case state.PlaylistsUpdatedMsg:
 		if updatedLibrary, cmd, ok := updateSubmodel(m.library, msg, m.library); ok {
 			m.library = updatedLibrary
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
 
-	case TracksUpdatedMsg:
+	case state.TracksUpdatedMsg:
 		// Update viewport with new tracks
 		if updatedViewport, cmd, ok := updateSubmodel(m.viewport, msg, m.viewport); ok {
 			m.viewport = updatedViewport
@@ -89,14 +90,20 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case PlaylistSelectedMsg:
+	case state.PlaylistSelectedMsg:
 		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
+
+		log.Println("Updating model with message type", msg)
+		updatedModel, cmd, handled := m.handleGlobalKeys(msg)
+		m = updatedModel
+		if handled {
+			return m, cmd
+		}
+
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Quit):
-			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.CycleFocusForward):
 			m.cycleFocus()
 		case key.Matches(msg, DefaultKeyMap.CycleFocusBackward):
@@ -119,6 +126,8 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m applicationModel) View() string {
+
+	/* return m.viewHelp() */
 	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
 	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
 	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
@@ -155,6 +164,47 @@ func (m applicationModel) View() string {
 		lipgloss.Center,
 		m.navbar.View(),
 		lipgloss.JoinHorizontal(lipgloss.Top, library, viewport),
+		combinedPlaybackSectionStyle.Render(
+			lipgloss.JoinHorizontal(lipgloss.Bottom,
+				songInfoView,
+				centerSection,
+				volumeControlView),
+		),
+	)
+}
+
+func (m applicationModel) viewHelp() string {
+
+	other := newHelp()
+
+	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
+	songInfoView := m.audioPlayer.songInfoView()
+	volumeControlView := m.audioPlayer.volumeControlView()
+
+	// Calculate the available width for the center section
+	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
+
+	centeredPlaybackControls := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		Render(m.playbackControl.View())
+
+	centeredAudioPlayer := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		Render(m.audioPlayer.View())
+
+	// Join them vertically
+	centerSection := lipgloss.JoinVertical(
+		lipgloss.Center,
+		centeredPlaybackControls,
+		centeredAudioPlayer,
+	)
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		m.navbar.View(),
+		lipgloss.NewStyle().Height(80-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)-2).Render(other.View()),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
 				songInfoView,
@@ -217,4 +267,21 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
+	var cmd tea.Cmd
+
+	// Handle global keys
+	log.Println("Handling global key:", msg)
+	switch {
+	case key.Matches(msg, DefaultKeyMap.QuitApplication):
+		return m, tea.Quit, true
+	case key.Matches(msg, DefaultKeyMap.Help):
+		return m, nil, true
+	}
+
+	log.Println("Unhandled key:", msg)
+
+	return m, cmd, false
 }

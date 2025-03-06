@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietzy1/termify/internal/authentication"
@@ -22,9 +21,11 @@ func main() {
 	}
 	defer f.Close()
 
-	var wg sync.WaitGroup
-
-	appConfig := config.New()
+	// Load configuration
+	appConfig, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
 	// Create the auth service with config
 	authService, err := authentication.NewService(authentication.ServiceConfig{
@@ -33,10 +34,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create auth service: %v", err)
 	}
-	// Start the server in a goroutine
-	wg.Add(1)
+
 	go func() {
-		defer wg.Done()
 		if err := authService.Start(ctx); err != nil && ctx.Err() == nil {
 			log.Printf("Server error: %v", err)
 			cancel()
@@ -53,6 +52,4 @@ func main() {
 
 	// TUI has exited, trigger shutdown
 	cancel()
-
-	//wg.Wait()
 }

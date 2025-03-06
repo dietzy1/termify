@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 	"github.com/evertras/bubble-table/table"
 	"github.com/zmb3/spotify/v2"
 )
@@ -18,12 +19,12 @@ var _ tea.Model = (*viewportModel)(nil)
 type viewportModel struct {
 	width, height int
 	table         table.Model
-	tracks        []spotify.PlaylistItem // Store tracks for selection
-	allTracks     []spotify.PlaylistItem // Store all tracks for filtering
-	searchInput   textinput.Model        // Text input for search
-	searching     bool                   // Whether we're in search mode
+	//tracks        []spotify.PlaylistItem // Store tracks for selection
+	//allTracks     []spotify.PlaylistItem // Store all tracks for filtering
+	searchInput textinput.Model // Text input for search
+	searching   bool            // Whether we're in search mode
 
-	spotifyState *SpotifyState
+	spotifyState *state.SpotifyState
 }
 
 func createTable() table.Model {
@@ -50,16 +51,16 @@ func createTable() table.Model {
 	)
 }
 
-func newViewport(spotifyState *SpotifyState) viewportModel {
+func newViewport(spotifyState *state.SpotifyState) viewportModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search tracks..."
 	ti.CharLimit = 50
 	ti.Width = 30 // Will be adjusted based on window width
 
 	return viewportModel{
-		table:        createTable(),
-		tracks:       make([]spotify.PlaylistItem, 0),
-		allTracks:    make([]spotify.PlaylistItem, 0),
+		table: createTable(),
+		//tracks:       make([]spotify.PlaylistItem, 0),
+		//allTracks:    make([]spotify.PlaylistItem, 0),
 		searchInput:  ti,
 		searching:    false,
 		spotifyState: spotifyState,
@@ -85,19 +86,17 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height - 1 - 2).WithPageSize(m.height - 7)
+		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height - 1 - 2).WithPageSize(m.height - 9)
 		log.Printf("Viewport width: %d, height: %d", m.width, m.height)
 
-	case TracksUpdatedMsg:
+	case state.TracksUpdatedMsg:
 		if msg.Err != nil {
 			log.Printf("Viewport: Error loading tracks: %v", msg.Err)
 			return m, nil
 		}
 
-		log.Printf("Viewport: Converting %d tracks to table rows", len(msg.Tracks))
-		m.allTracks = msg.Tracks // Store all tracks for filtering
-		m.tracks = msg.Tracks    // Store tracks for selection
-		m.updateTableWithTracks(m.tracks)
+		log.Printf("Viewport: Converting %d tracks to table rows", len(m.spotifyState.Tracks))
+		m.updateTableWithTracks(m.spotifyState.Tracks)
 
 	// Handle keyboard events for table navigation and search
 	case tea.KeyMsg:
@@ -141,8 +140,8 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Select):
 			if selected := m.table.HighlightedRow(); selected.Data != nil {
 				if numStr, ok := selected.Data["#"].(string); ok {
-					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.tracks) {
-						track := m.tracks[idx-1]
+					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
+						track := m.spotifyState.Tracks[idx-1]
 						if track.Track.Track != nil {
 							log.Printf("Viewport: Selected track: %s", track.Track.Track.ID)
 							return m, m.spotifyState.PlayTrack(track.Track.Track.ID)
@@ -181,14 +180,6 @@ func (m viewportModel) View() string {
 		searchBar,
 		m.table.View(),
 	)
-}
-
-// Helper function to format track duration
-func formatTrackDuration(ms int) string {
-	seconds := ms / 1000
-	minutes := seconds / 60
-	remainingSeconds := seconds % 60
-	return fmt.Sprintf("%d:%02d", minutes, remainingSeconds)
 }
 
 // Update table with tracks

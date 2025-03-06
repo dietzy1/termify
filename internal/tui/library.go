@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 var _ tea.Model = (*libraryModel)(nil)
@@ -28,10 +29,10 @@ type libraryModel struct {
 	list   list.Model
 	err    error
 
-	spotifyState *SpotifyState
+	spotifyState *state.SpotifyState
 }
 
-func newLibrary(spotifyState *SpotifyState) libraryModel {
+func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 	delegate := list.NewDefaultDelegate()
 
 	const itemWidth = 28
@@ -98,15 +99,15 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetHeight(m.height)
 		return m, nil
 
-	case PlaylistsUpdatedMsg:
+	case state.PlaylistsUpdatedMsg:
 		if msg.Err != nil {
 			m.err = msg.Err
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
 			return m, nil
 		}
-		log.Printf("Application: Converting %d playlists to list items", len(msg.Playlists))
-		items := make([]list.Item, 0, len(msg.Playlists))
-		for _, p := range msg.Playlists {
+		log.Printf("Application: Converting %d playlists to list items", len(m.spotifyState.Playlists))
+		items := make([]list.Item, 0, len(m.spotifyState.Playlists))
+		for _, p := range m.spotifyState.Playlists {
 			title := p.Name
 			if title == "" {
 				title = "Untitled Playlist"
@@ -115,13 +116,13 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if desc == "" {
 				desc = "Unknown Owner"
 			}
+
 			items = append(items, playlist{
 				title: title,
 				desc:  desc,
 				uri:   string(p.URI),
 			})
 		}
-
 		m.list.SetItems(items)
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 
@@ -132,7 +133,6 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmd, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri)))
 		}
 	}
-
 	// Handle list-specific updates
 	m.list, cmd = m.list.Update(msg)
 	return m, cmd

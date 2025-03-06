@@ -200,8 +200,6 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Quit):
-			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Select):
 			if m.authModel.state == StateAwaitingClientID {
 				clientID := m.authModel.input.Value()
@@ -401,11 +399,4 @@ func (m *authModel) Init() tea.Cmd {
 	m.authChan = m.auth.StartAuth(context.Background(), clientID)
 	log.Println("Returning waitForAuth command")
 	return waitForAuth(m.authChan)
-}
-
-func safelyRenderError(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
 }

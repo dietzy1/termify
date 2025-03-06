@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 var _ tea.Model = (*audioPlayerModel)(nil)
@@ -18,10 +18,10 @@ type audioPlayerModel struct {
 
 	progress     int
 	bar          progress.Model
-	spotifyState *SpotifyState
+	spotifyState *state.SpotifyState
 }
 
-func newAudioPlayer(spotifyState *SpotifyState) audioPlayerModel {
+func newAudioPlayer(spotifyState *state.SpotifyState) audioPlayerModel {
 	return audioPlayerModel{
 		width: 0,
 		bar: progress.New(
@@ -35,14 +35,14 @@ func newAudioPlayer(spotifyState *SpotifyState) audioPlayerModel {
 func (m audioPlayerModel) songInfoView() string {
 	var songTitle string = "Unknown Song"
 	if m.spotifyState != nil &&
-		m.spotifyState.playerState.Item != nil {
-		songTitle = m.spotifyState.playerState.Item.Name
+		m.spotifyState.PlayerState.Item != nil {
+		songTitle = m.spotifyState.PlayerState.Item.Name
 	}
 
 	var artist = "Unknown Artist"
 	if m.spotifyState != nil &&
-		m.spotifyState.playerState.Item != nil {
-		artist = m.spotifyState.playerState.Item.Artists[0].Name
+		m.spotifyState.PlayerState.Item != nil {
+		artist = m.spotifyState.PlayerState.Item.Artists[0].Name
 	}
 
 	titleStyle := lipgloss.NewStyle().
@@ -83,8 +83,8 @@ func (m audioPlayerModel) View() string {
 
 	var duration = 0
 	if m.spotifyState != nil &&
-		m.spotifyState.playerState.Item != nil {
-		duration = int(m.spotifyState.playerState.Item.Duration / 1000)
+		m.spotifyState.PlayerState.Item != nil {
+		duration = int(m.spotifyState.PlayerState.Item.Duration / 1000)
 	}
 
 	// Create the progress bar
@@ -111,13 +111,12 @@ func (m audioPlayerModel) Init() tea.Cmd {
 
 func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
-	case PlayerStateUpdatedMsg:
+	case state.PlayerStateUpdatedMsg:
 		if msg.Err != nil {
 			log.Println("Error updating player state")
 			return m, nil
 		}
-		m.progress = int(msg.State.Progress / 1000)
+		m.progress = int(m.spotifyState.PlayerState.Progress / 1000)
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -138,29 +137,21 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		if m.spotifyState.playerState.Playing {
+		if m.spotifyState.PlayerState.Playing {
 			m.progress++
 
-			if m.progress > int(m.spotifyState.playerState.Item.Duration/1000) {
+			if m.progress > int(m.spotifyState.PlayerState.Item.Duration/1000) {
 				m.progress = 0
 				return m, tea.Batch(
 					m.spotifyState.FetchPlaybackState(),
 					tickCmd(),
 				)
 			}
-
 		}
-
 		return m, tickCmd()
 
 	}
 	return m, nil
-}
-
-func formatDuration(seconds int) string {
-	minutes := seconds / 60
-	remainingSeconds := seconds % 60
-	return fmt.Sprintf("%d:%02d", minutes, remainingSeconds)
 }
 
 type tickMsg time.Time
@@ -174,7 +165,7 @@ func tickCmd() tea.Cmd {
 func (m audioPlayerModel) volumeControlView() string {
 	var volume = 0
 	if m.spotifyState != nil {
-		volume = int(m.spotifyState.playerState.Device.Volume)
+		volume = int(m.spotifyState.PlayerState.Device.Volume)
 	}
 
 	barStyle := lipgloss.NewStyle().

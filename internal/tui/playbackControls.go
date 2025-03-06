@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 var _ tea.Model = (*playbackControlsModel)(nil)
@@ -15,10 +16,10 @@ type playbackControlsModel struct {
 	currentButton int
 	volume        float64
 
-	spotifyState *SpotifyState
+	spotifyState *state.SpotifyState
 }
 
-func newPlaybackControlsModel(spotifyState *SpotifyState) playbackControlsModel {
+func newPlaybackControlsModel(spotifyState *state.SpotifyState) playbackControlsModel {
 	return playbackControlsModel{
 		currentButton: 2,
 		volume:        0.5,
@@ -33,7 +34,7 @@ func (m playbackControlsModel) Init() tea.Cmd {
 
 func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case PlayerStateUpdatedMsg:
+	case state.PlayerStateUpdatedMsg:
 		log.Println("Playback controls recieved player state update")
 		if msg.Err != nil {
 			log.Println("Error updating player state")
@@ -56,7 +57,7 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 1:
 				return m, m.spotifyState.PreviousTrack()
 			case 2:
-				if m.spotifyState.playerState.Playing {
+				if m.spotifyState.PlayerState.Playing {
 					return m, m.spotifyState.PausePlayback()
 				}
 				return m, m.spotifyState.StartPlayback()
@@ -94,10 +95,10 @@ func (m playbackControlsModel) View() string {
 	playPauseHelper := "Play"
 
 	// Get current states (changed from string comparison to boolean)
-	shuffleState := m.spotifyState.playerState.ShuffleState
-	repeatState := m.spotifyState.playerState.RepeatState
+	shuffleState := m.spotifyState.PlayerState.ShuffleState
+	repeatState := m.spotifyState.PlayerState.RepeatState
 
-	if m.spotifyState.playerState.Playing {
+	if m.spotifyState.PlayerState.Playing {
 		playPauseButton = "⏸"
 		playPauseHelper = "Pause"
 	}

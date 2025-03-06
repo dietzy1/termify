@@ -15,15 +15,13 @@ var _ tea.Model = (*model)(nil)
 func (m model) Init() tea.Cmd {
 	switch m.state {
 	case authenticating:
-		log.Println("🥵🥵🥵🥵🥵")
 		return tea.Batch(
-			tea.SetWindowTitle("✨Authenticating✨"),
+			tea.SetWindowTitle("Authenticating"),
 			m.authModel.Init(),
 		)
 	case application:
-		log.Println("🤬🤬🤬🤬🤬")
 		return tea.Batch(
-			tea.SetWindowTitle("✨Termify✨"),
+			tea.SetWindowTitle("Termify"),
 			m.applicationModel.Init(),
 		)
 	}
@@ -35,7 +33,6 @@ type AppState int
 const (
 	authenticating AppState = iota
 	application
-	help
 )
 
 type model struct {
@@ -44,7 +41,6 @@ type model struct {
 
 	authModel        authModel
 	applicationModel applicationModel
-	helpModel        helpModel
 }
 
 // Config holds the TUI configuration
@@ -62,7 +58,6 @@ func Run(cfg Config) error {
 		state:            authenticating,
 		authModel:        newAuthModel(cfg.AuthService),
 		applicationModel: newApplication(nil),
-		helpModel:        newHelp(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -98,11 +93,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case application:
 		log.Printf("Updating application model with message type: %T", msg)
 		return m.applicationModel.Update(msg)
-
-	case help:
-		log.Printf("Updating help model with message type: %T", msg)
-		return m.helpModel.Update(msg)
-
 	}
 	return m, nil
 }
@@ -113,20 +103,6 @@ func (m model) View() string {
 		return m.viewAuth()
 	case application:
 		return m.applicationModel.View()
-	case help:
-		return m.helpModel.View()
 	}
 	return "Illegal state"
-}
-
-// Helper function to update submodels
-func updateSubmodel[T any](model tea.Model, msg tea.Msg, targetType T) (T, tea.Cmd, bool) {
-	updatedModel, cmd := model.Update(msg)
-
-	typedModel, ok := updatedModel.(T)
-	if !ok {
-		return targetType, tea.Quit, false
-	}
-
-	return typedModel, cmd, true
 }

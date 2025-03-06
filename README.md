@@ -1,3 +1,5 @@
+# Termify - Spotify TUI Client
+
 ```
  ______              _ ___    
 /_  __/__ ______ _  (_) _/_ __
@@ -5,38 +7,72 @@
 /_/  \__/_/ /_/_/_/_/_/ \_, / 
                        /___/  
 ```
-> A sleek, feature-rich Spotify TUI (Terminal User Interface) client written in Go
 
-![Termify Screenshot](https://github.com/dietzy1/termify/raw/main/assets/screenshot.png)
-
-## ✨ Features
-
-- **Beautiful Terminal Interface**: Enjoy a modern, responsive UI built with [Bubble Tea](https://github.com/charmbracelet/bubbletea)
-- **Spotify Integration**: Full access to your Spotify library and playback controls
-- **Playlist Management**: Browse and play your playlists directly from the terminal
-- **Playback Controls**: Play, pause, skip tracks, adjust volume, and more
-- **Keyboard Shortcuts**: Efficient navigation with intuitive keybindings
-- **Authentication**: Secure OAuth2 PKCE flow for Spotify API authentication
-- **Cross-Platform**: Works on macOS, Linux, and Windows
-
-## 🚀 Installation
+A terminal-based Spotify client written in Go
 
 ### Prerequisites
 - A Spotify account (Premium required for full playback functionality)
 
-### From Source
+## Configuration
 
-```bash
-# Clone the repository
-git clone https://github.com/dietzy1/termify.git
-cd termify
+Termify supports multiple ways to configure the application:
 
-# Build the application
-go build -o termify
+### Configuration File
 
-# Run Termify
-./termify
+By default, Termify looks for a configuration file at:
+- `~/.config/termify/config.yaml` (macOS/Linux)
+- `%APPDATA%\termify\config.yaml` (Windows)
+
+Example configuration file:
+
+```yaml
+server:
+  port: 8080
+spotify:
+  client_id: your_spotify_client_id
+  daemon_mode: false
+  connect_client: default
 ```
+
+### Command-line Flags
+
+You can also configure Termify using command-line flags:
+
+```
+Usage:
+  termify [flags]
+
+Flags:
+  --config string           Path to config file
+  --port string             Server port
+  --client-id string        Spotify client ID
+  --daemon                  Run in daemon mode
+  --connect-client string   Spotify connect client to use
+```
+
+### Environment Variables
+
+Termify also supports configuration via environment variables:
+
+- `TERMIFY_PORT`: Server port
+- `TERMIFY_CLIENT_ID`: Spotify client ID
+- `TERMIFY_DAEMON_MODE`: Set to "true" to enable daemon mode
+- `TERMIFY_CONNECT_CLIENT`: Spotify connect client to use
+
+## Configuration Priority
+
+Termify uses the following priority order for configuration (highest to lowest):
+
+1. Command-line flags
+2. Environment variables
+3. Configuration file
+4. Default values
+
+## Getting Started
+
+1. Get a Spotify Client ID from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications)
+2. Configure Termify with your Client ID using one of the methods above
+3. Run Termify and follow the authentication process
 
 ### Using Go Install
 
@@ -44,73 +80,12 @@ go build -o termify
 go install github.com/dietzy1/termify@latest
 ```
 
-## 🔑 Authentication
-
-On first run, Termify will:
-
-1. Open a browser window for Spotify authentication
-2. Ask you to log in to your Spotify account
-3. Request necessary permissions
-4. Redirect back to the application
-
-Your token is stored for future sessions.
-
-## 🎮 Usage
-
-### Navigation
-
-- **Tab**: Cycle through sections
-- **Arrow Keys**: Navigate within sections
-- **Enter**: Select items
-- **q**: Quit the application
-
-### Playback Controls
-
-- **Space**: Play/Pause
-- **n**: Next track
-- **p**: Previous track
-- **s**: Toggle shuffle
-- **r**: Toggle repeat mode
-- **+/-**: Adjust volume
-
-## 📦 Project Structure
-
-```
-termify/
-├── internal/           # Internal packages
-│   ├── authentication/ # Spotify authentication
-│   ├── config/         # Application configuration
-│   └── tui/            # Terminal user interface
-│       ├── tui.go              # Main entry model
-│       ├── application.go      # Main application model
-│       ├── playbackControls.go # Playback control UI
-│       ├── spotifyState.go     # Spotify API integration
-│       └── ...                 # Other UI components
-└── main.go             # Application entry point
-```
-
-## 🛠️ Development
-
-### Requirements
-
-- Go 1.16+
-- [Bubble Tea](https://github.com/charmbracelet/bubbletea) for the TUI
-- [Spotify Web API Go](https://github.com/zmb3/spotify) for Spotify integration
-
-### Building from Source
+## Building from Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/dietzy1/termify.git
-cd termify
-
-# Install dependencies
-go mod download
-
-# Run in development mode
-go run main.go
+go build -o termify
 ```
 
-## 📝 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+[MIT License](LICENSE)

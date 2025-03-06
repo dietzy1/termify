@@ -8,4 +8,4 @@ const (
 	TextColor       = "#b3b3b3"
 )
 
-const SHRINKWIDTH = 80
+const SHRINKWIDTH = 95

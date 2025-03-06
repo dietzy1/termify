@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/dietzy1/termify/internal/config"
@@ -32,8 +33,20 @@ type service struct {
 	config *config.Config
 	server *http.Server
 	mux    *http.ServeMux
-	mu     sync.Mutex
 	auth   *SpotifyAuth
+}
+
+// getUserConfigDir returns the user's config directory
+func getUserConfigDir() (string, error) {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	configDir := filepath.Join(userConfigDir, "termify")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return "", err
+	}
+	return configDir, nil
 }
 
 // NewService creates a new authentication service
@@ -46,28 +59,27 @@ func NewService(cfg ServiceConfig) (Service, error) {
 	s := &service{
 		config: cfg.AppConfig,
 		server: &http.Server{
-			Addr:    cfg.AppConfig.Port,
+			Addr:    cfg.AppConfig.GetPort(),
 			Handler: mux,
 		},
-		mux:  mux,
-		mu:   sync.Mutex{},
-		auth: nil,
+		mux: mux,
 	}
 
-	// Initialize SpotifyAuth with the service as the CallbackSetter
+	// Initialize Spotify auth with the credential manager
 	auth, err := NewSpotifyAuth(spotifyAuthConfig{
 		server: s,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create spotify auth: %w", err)
 	}
-	mux.HandleFunc("/callback", auth.completeAuth)
-
 	s.auth = auth
+
+	mux.HandleFunc("/callback", s.auth.completeAuth)
 
 	return s, nil
 }
 
+// StartAuth initiates the Spotify authentication process
 func (s *service) StartAuth(ctx context.Context, clientID string) chan AuthResult {
 	if s.auth == nil {
 		resultChan := make(chan AuthResult, 1)
@@ -81,28 +93,37 @@ func (s *service) StartAuth(ctx context.Context, clientID string) chan AuthResul
 	return s.auth.StartAuth(ctx, clientID)
 }
 
+// GetClientID returns the Spotify client ID from config or credentials
 func (s *service) GetClientID() string {
-	if s.auth == nil {
-		return ""
+	// First try to get from config
+	clientID := s.config.GetClientID()
+	if clientID != "" {
+		return clientID
 	}
 
-	token, err := s.auth.credManager.LoadClientID()
+	// If not in config, try to load from credentials
+	var err error
+	clientID, err = s.auth.credManager.LoadClientID()
 	if err != nil {
-		log.Printf("Failed to load client ID: %v", err)
+		log.Printf("Failed to load client ID from credentials: %v", err)
 		return ""
 	}
 
-	return token
+	// If found in credentials, update the config
+	if clientID != "" {
+		if err := s.config.SetClientID(clientID); err != nil {
+			log.Printf("Failed to save client ID to config: %v", err)
+		}
+	}
+
+	return clientID
 }
 
 func (s *service) Start(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	errChan := make(chan error, 1)
 	log.Println("Starting authentication service")
 	go func() {
-		log.Printf("Starting callback server on %s", s.config.Port)
+		log.Printf("Starting callback server on %s", s.config.GetPort())
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChan <- fmt.Errorf("server error: %w", err)
 		}
@@ -118,9 +139,6 @@ func (s *service) Start(ctx context.Context) error {
 }
 
 func (s *service) Stop() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.server != nil {
 		log.Println("Stopping callback server")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

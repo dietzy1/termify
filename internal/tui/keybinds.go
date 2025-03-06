@@ -5,21 +5,39 @@ import (
 )
 
 type KeyMap struct {
-	Quit               key.Binding
-	Up                 key.Binding
-	Down               key.Binding
-	Left               key.Binding
-	Right              key.Binding
-	Select             key.Binding
+	Up    key.Binding
+	Down  key.Binding
+	Left  key.Binding
+	Right key.Binding
+
 	CycleFocusForward  key.Binding
 	CycleFocusBackward key.Binding
-	Copy               key.Binding
+
+	//Actions
+	Select key.Binding
+	Copy   key.Binding
+	Return key.Binding
+
+	// System
+	QuitApplication key.Binding
+	Help            key.Binding
+	Settings        key.Binding
+
+	// Media controls
+	Shuffle    key.Binding
+	Previous   key.Binding
+	PlayPause  key.Binding
+	Next       key.Binding
+	Repeat     key.Binding
+	VolumeMute key.Binding
+	VolumeUp   key.Binding
+	VolumeDown key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
-	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c", "esc"),
-		key.WithHelp("ctrl+c/esc", "quit application"),
+	QuitApplication: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "quit application"),
 	),
 	Up: key.NewBinding(
 		key.WithKeys("k", "up"),
@@ -52,5 +70,23 @@ var DefaultKeyMap = KeyMap{
 	Copy: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "copy URL to clipboard"),
+	),
+
+	Help: key.NewBinding(
+		key.WithKeys("?", "?"),
+		key.WithHelp("?", "show help view"),
+	),
+	VolumeUp: key.NewBinding(
+		key.WithKeys("ctrl+up"),
+		key.WithHelp("ctrl+↑", "Increase volume"),
+	),
+	VolumeDown: key.NewBinding(
+		key.WithKeys("ctrl+down"),
+		key.WithHelp("ctrl+down↓", "Lower volume"),
+	),
+
+	Settings: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "show settings view"),
 	),
 }
