@@ -19,9 +19,9 @@ type KeyMap struct {
 	Return key.Binding
 
 	// System
-	QuitApplication key.Binding
-	Help            key.Binding
-	Settings        key.Binding
+	Quit     key.Binding
+	Help     key.Binding
+	Settings key.Binding
 
 	// Media controls
 	Shuffle    key.Binding
@@ -35,7 +35,7 @@ type KeyMap struct {
 }
 
 var DefaultKeyMap = KeyMap{
-	QuitApplication: key.NewBinding(
+	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("ctrl+c", "quit application"),
 	),
@@ -71,22 +71,48 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("c"),
 		key.WithHelp("c", "copy URL to clipboard"),
 	),
-
 	Help: key.NewBinding(
-		key.WithKeys("?", "?"),
+		key.WithKeys("?"),
 		key.WithHelp("?", "show help view"),
 	),
 	VolumeUp: key.NewBinding(
 		key.WithKeys("ctrl+up"),
-		key.WithHelp("ctrl+↑", "Increase volume"),
+		key.WithHelp("ctrl+↑", "increase volume"),
 	),
 	VolumeDown: key.NewBinding(
 		key.WithKeys("ctrl+down"),
-		key.WithHelp("ctrl+down↓", "Lower volume"),
+		key.WithHelp("ctrl+↓", "lower volume"),
 	),
-
 	Settings: key.NewBinding(
 		key.WithKeys("ctrl+s"),
 		key.WithHelp("ctrl+s", "show settings view"),
+	),
+	Return: key.NewBinding(
+		key.WithKeys("backspace", "esc"),
+		key.WithHelp("backspace/esc", "return to previous view"),
+	),
+	Shuffle: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "toggle shuffle"),
+	),
+	Previous: key.NewBinding(
+		key.WithKeys("p", "b"),
+		key.WithHelp("p/b", "previous song"),
+	),
+	PlayPause: key.NewBinding(
+		key.WithKeys("space"),
+		key.WithHelp("space", "play/pause"),
+	),
+	Next: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "next song"),
+	),
+	Repeat: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "cycle repeat mode"),
+	),
+	VolumeMute: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "mute/unmute volume"),
 	),
 }

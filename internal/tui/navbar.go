@@ -40,6 +40,13 @@ func (m navbarModel) View() string {
 		Foreground(lipgloss.Color(PrimaryColor)).
 		Bold(true)
 
+	escText := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render("esc "),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			Render("Back"),
+	)
+
 	helpText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("? "),
 		lipgloss.NewStyle().
@@ -47,15 +54,16 @@ func (m navbarModel) View() string {
 			Render("Help"),
 	)
 
-	settings := lipgloss.JoinHorizontal(lipgloss.Left,
+	/* settings := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("s "),
 		lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
 			Render("Settings"),
-	)
+	) */
 
 	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
-		settings,
+		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(escText),
+		/* settings, */
 		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(helpText),
 	)
 

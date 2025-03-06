@@ -6,21 +6,23 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/zmb3/spotify/v2"
 	"github.com/dietzy1/termify/internal/state"
+	"github.com/zmb3/spotify/v2"
 )
 
 type applicationModel struct {
-	width        int
+	width, height int
+
 	spotifyState *state.SpotifyState
 
-	focusedModel FocusedModel
-	navbar       navbarModel
-	/* searchBar       searchbarModel */
+	focusedModel    FocusedModel
+	navbar          navbarModel
 	library         libraryModel
 	viewport        viewportModel
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
+
+	helpModel helpModel
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -35,26 +37,17 @@ func (m applicationModel) Init() tea.Cmd {
 }
 
 func newApplication(client *spotify.Client) applicationModel {
-	log.Printf("Application: Creating new application with client: %v", client != nil)
-
 	spotifyState := state.NewSpotifyState(client)
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
-	navbar := newNavbar()
-	/* searchBar := newSearchbar() */
-	library := newLibrary(spotifyState)
-	viewport := newViewport(spotifyState)
-	playbackControl := newPlaybackControlsModel(spotifyState)
-	audioPlayer := newAudioPlayer(spotifyState)
-
 	return applicationModel{
-		spotifyState: spotifyState,
-		navbar:       navbar,
-		/* searchBar:       searchBar, */
-		library:         library,
-		viewport:        viewport,
-		playbackControl: playbackControl,
-		audioPlayer:     audioPlayer,
+		spotifyState:    spotifyState,
+		navbar:          newNavbar(),
+		library:         newLibrary(spotifyState),
+		viewport:        newViewport(spotifyState),
+		playbackControl: newPlaybackControlsModel(spotifyState),
+		audioPlayer:     newAudioPlayer(spotifyState),
+		helpModel:       newHelp(),
 	}
 }
 
@@ -127,7 +120,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m applicationModel) View() string {
 
-	/* return m.viewHelp() */
+	/* 	return m.viewHelp() */
 	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
 	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
 	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
@@ -175,8 +168,6 @@ func (m applicationModel) View() string {
 
 func (m applicationModel) viewHelp() string {
 
-	other := newHelp()
-
 	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
 	songInfoView := m.audioPlayer.songInfoView()
 	volumeControlView := m.audioPlayer.volumeControlView()
@@ -204,7 +195,7 @@ func (m applicationModel) viewHelp() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		m.navbar.View(),
-		lipgloss.NewStyle().Height(80-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)-2).Render(other.View()),
+		lipgloss.NewStyle().Height(m.height-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)-2).Render(m.helpModel.View()),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
 				songInfoView,
@@ -217,6 +208,7 @@ func (m applicationModel) viewHelp() string {
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {
 	var cmds []tea.Cmd
 	m.width = msg.Width
+	m.height = msg.Height // Yet to use this for anything really
 	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 4
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{
@@ -224,8 +216,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}, m.navbar); ok {
 		m.navbar = updatedNavbar
 		cmds = append(cmds, cmd)
-	} else {
-		return m, tea.Quit
 	}
 
 	if updatedLibrary, cmd, ok := updateSubmodel(m.library, tea.WindowSizeMsg{
@@ -234,8 +224,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}, m.library); ok {
 		m.library = updatedLibrary
 		cmds = append(cmds, cmd)
-	} else {
-		return m, tea.Quit
 	}
 
 	if updatedViewport, cmd, ok := updateSubmodel(m.viewport, tea.WindowSizeMsg{
@@ -244,8 +232,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}, m.viewport); ok {
 		m.viewport = updatedViewport
 		cmds = append(cmds, cmd)
-	} else {
-		return m, tea.Quit
 	}
 
 	if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, tea.WindowSizeMsg{
@@ -253,8 +239,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}, m.playbackControl); ok {
 		m.playbackControl = updatedPlaybackControl
 		cmds = append(cmds, cmd)
-	} else {
-		return m, tea.Quit
 	}
 
 	if updatedAudioPlayer, cmd, ok := updateSubmodel(m.audioPlayer, tea.WindowSizeMsg{
@@ -262,8 +246,14 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}, m.audioPlayer); ok {
 		m.audioPlayer = updatedAudioPlayer
 		cmds = append(cmds, cmd)
-	} else {
-		return m, tea.Quit
+	}
+
+	if updatedHelp, cmd, ok := updateSubmodel(m.helpModel, tea.WindowSizeMsg{
+		Width:  msg.Width,
+		Height: msg.Height + 2,
+	}, m.helpModel); ok {
+		m.helpModel = updatedHelp
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -272,10 +262,9 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
 	var cmd tea.Cmd
 
-	// Handle global keys
 	log.Println("Handling global key:", msg)
 	switch {
-	case key.Matches(msg, DefaultKeyMap.QuitApplication):
+	case key.Matches(msg, DefaultKeyMap.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, DefaultKeyMap.Help):
 		return m, nil, true

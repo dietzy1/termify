@@ -78,6 +78,7 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
+	l.DisableQuitKeybindings()
 
 	return libraryModel{
 		list:         l,
@@ -133,7 +134,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmd, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri)))
 		}
 	}
-	// Handle list-specific updates
+
 	m.list, cmd = m.list.Update(msg)
 	return m, cmd
 }

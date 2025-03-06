@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -15,8 +16,7 @@ type helpModel struct {
 
 func newHelp() helpModel {
 	return helpModel{
-		width: 240,
-		keys:  DefaultKeyMap,
+		keys: DefaultKeyMap,
 	}
 }
 
@@ -27,8 +27,15 @@ func (m helpModel) Init() tea.Cmd {
 func (m helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		log.Println("Help: Window size message received", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Return):
+			log.Println("Help: Return key pressed")
+		}
 	}
 
 	return m, nil
@@ -47,8 +54,7 @@ func (m helpModel) View() string {
 
 	sectionTitleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
-		Bold(true).
-		PaddingBottom(1)
+		Bold(true)
 
 	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#ffffff")).
@@ -60,12 +66,13 @@ func (m helpModel) View() string {
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(BorderColor)).
-		Width(m.width - 2).Align(lipgloss.Center).Height(66)
+		Width(m.width - 2).Align(lipgloss.Center).Height(m.height - 2)
 
 	// Group key bindings by category
 	navigationBindings := []key.Binding{
 		m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right,
 		m.keys.CycleFocusForward, m.keys.CycleFocusBackward,
+		m.keys.Return,
 	}
 
 	actionBindings := []key.Binding{
@@ -73,11 +80,13 @@ func (m helpModel) View() string {
 	}
 
 	systemBindings := []key.Binding{
-		m.keys.Help, m.keys.QuitApplication, m.keys.Settings,
+		m.keys.Help, m.keys.Quit, m.keys.Settings,
 	}
 
 	mediaBindings := []key.Binding{
-		m.keys.VolumeUp, m.keys.VolumeDown,
+		m.keys.VolumeUp, m.keys.VolumeDown, m.keys.VolumeMute,
+		m.keys.Previous, m.keys.PlayPause, m.keys.Next,
+		m.keys.Shuffle, m.keys.Repeat,
 	}
 
 	// Function to render a section of key bindings
