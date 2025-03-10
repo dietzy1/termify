@@ -16,7 +16,7 @@ import (
 type SpotifyState struct {
 	client *spotify.Client
 
-	DeviceState spotify.PlayerDevice
+	DeviceState []spotify.PlayerDevice
 	//Currently playing state
 	PlayerState spotify.PlayerState
 
@@ -219,7 +219,7 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 			log.Printf("SpotifyState: Found device: %v", device.Name)
 		}
 		// This is unsafe and bad TODO: fix this later
-		s.DeviceState = devices[0]
+		s.DeviceState = devices
 		return nil
 	}
 }
