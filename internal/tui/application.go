@@ -24,6 +24,7 @@ type applicationModel struct {
 
 	helpModel helpModel
 	showHelp  bool
+	//showError bool
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -43,12 +44,13 @@ func newApplication(client *spotify.Client) applicationModel {
 
 	return applicationModel{
 		spotifyState:    spotifyState,
-		navbar:          newNavbar(),
+		navbar:          newNavbar(spotifyState),
 		library:         newLibrary(spotifyState),
 		viewport:        newViewport(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
 		helpModel:       newHelp(),
+		//showError:       true,
 	}
 }
 
@@ -56,6 +58,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case state.PlayerStateUpdatedMsg:
 		// Update playbackControl with new state
 		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
@@ -120,13 +123,16 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m applicationModel) View() string {
+
+	//const error = true
+
 	if m.showHelp {
 		return m.viewHelp()
 	}
 
 	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
 	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
-	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
+	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
 
 	viewport := viewportStyle.Render(m.viewport.View())
 	library := libraryStyle.Render(m.library.View())
@@ -156,9 +162,24 @@ func (m applicationModel) View() string {
 		centeredAudioPlayer,
 	)
 
+	/* errorBar := lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#ff4444")).
+	Border(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("#ff4444")).
+	Width(m.width-2).
+	Height(2).
+	Padding(0, 1).
+	Render(lipgloss.JoinVertical(
+		lipgloss.Left,
+		"Error: Critical System Failure",
+		"Details: Unable to connect to Spotify API. Please check your internet connection.",
+	)) */
+
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
+
 		m.navbar.View(),
+		/* errorBar, */
 		lipgloss.JoinHorizontal(lipgloss.Top, library, viewport),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
@@ -166,12 +187,13 @@ func (m applicationModel) View() string {
 				centerSection,
 				volumeControlView),
 		),
+		"\r",
 	)
 }
 
 func (m applicationModel) viewHelp() string {
 
-	combinedPlaybackSectionStyle := applyFocusStyle(m.focusedModel == FocusPlaybackControl).MaxWidth(m.width)
+	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
 	songInfoView := m.audioPlayer.songInfoView()
 	volumeControlView := m.audioPlayer.volumeControlView()
 
@@ -198,13 +220,14 @@ func (m applicationModel) viewHelp() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		m.navbar.View(),
-		lipgloss.NewStyle().Height(m.height-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)-2).Render(m.helpModel.View()),
+		lipgloss.NewStyle().Height(m.height-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)).Render(m.helpModel.View()),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
 				songInfoView,
 				centerSection,
 				volumeControlView),
 		),
+		"\r",
 	)
 }
 
@@ -212,7 +235,14 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	var cmds []tea.Cmd
 	m.width = msg.Width
 	m.height = msg.Height // Yet to use this for anything really
-	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 4
+	//Check if errorMsg exists
+
+	var errorSubstracter int = 0
+	/* if m.showError {
+		errorSubstracter = 4
+	} */
+
+	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 3 + errorSubstracter
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{
 		Width: msg.Width,
@@ -238,14 +268,14 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}
 
 	if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, tea.WindowSizeMsg{
-		Width: msg.Width - 2,
+		Width: msg.Width,
 	}, m.playbackControl); ok {
 		m.playbackControl = updatedPlaybackControl
 		cmds = append(cmds, cmd)
 	}
 
 	if updatedAudioPlayer, cmd, ok := updateSubmodel(m.audioPlayer, tea.WindowSizeMsg{
-		Width: msg.Width - 2,
+		Width: msg.Width,
 	}, m.audioPlayer); ok {
 		m.audioPlayer = updatedAudioPlayer
 		cmds = append(cmds, cmd)
@@ -272,6 +302,27 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.Help):
 		m.showHelp = !m.showHelp
 		return m, nil, true
+
+	case key.Matches(msg, DefaultKeyMap.PlayPause):
+		if m.spotifyState.PlayerState.Playing {
+			return m, m.spotifyState.PausePlayback(), true
+		}
+		return m, m.spotifyState.StartPlayback(), true
+
+	case key.Matches(msg, DefaultKeyMap.Next):
+		return m, m.spotifyState.NextTrack(), true
+	case key.Matches(msg, DefaultKeyMap.Previous):
+		return m, m.spotifyState.PreviousTrack(), true
+	case key.Matches(msg, DefaultKeyMap.Shuffle):
+		return m, m.spotifyState.ToggleShuffleMode(), true
+	case key.Matches(msg, DefaultKeyMap.Repeat):
+		return m, m.spotifyState.ToggleRepeatMode(), true
+
+	case key.Matches(msg, DefaultKeyMap.VolumeUp):
+		return m, m.spotifyState.IncreaseVolume(), true
+
+	case key.Matches(msg, DefaultKeyMap.VolumeDown):
+		return m, m.spotifyState.DecreaseVolume(), true
 	}
 
 	// If we're in help mode, check for Return key to exit help

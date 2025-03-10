@@ -49,14 +49,12 @@ func (m audioPlayerModel) songInfoView() string {
 		Foreground(lipgloss.Color("#ffffff")).
 		Bold(true).
 		Align(lipgloss.Left).
-		Width(28).
-		MarginLeft(2)
+		Width(28)
 
 	artistStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
 		Align(lipgloss.Left).
-		Width(28).
-		MarginLeft(2)
+		Width(28)
 
 	if m.width < SHRINKWIDTH {
 		titleStyle = titleStyle.MarginLeft(0)
@@ -169,8 +167,8 @@ func (m audioPlayerModel) volumeControlView() string {
 	}
 
 	barStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
-		MarginRight(2)
+		Foreground(lipgloss.Color(PrimaryColor))
+		/* MarginRight(1) */
 
 	emptyBarStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor))
