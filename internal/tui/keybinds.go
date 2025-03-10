@@ -76,12 +76,12 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("?", "show help view"),
 	),
 	VolumeUp: key.NewBinding(
-		key.WithKeys("ctrl+up"),
-		key.WithHelp("ctrl+↑", "increase volume"),
+		key.WithKeys("shift+up"), // We cannot use this key its used by macOS
+		key.WithHelp("shift+↑", "increase volume"),
 	),
 	VolumeDown: key.NewBinding(
-		key.WithKeys("ctrl+down"),
-		key.WithHelp("ctrl+↓", "lower volume"),
+		key.WithKeys("shift+down"), // We cannot use this key its used by macOS
+		key.WithHelp("shift+↓", "lower volume"),
 	),
 	Settings: key.NewBinding(
 		key.WithKeys("ctrl+s"),
@@ -96,11 +96,11 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("s", "toggle shuffle"),
 	),
 	Previous: key.NewBinding(
-		key.WithKeys("p", "b"),
-		key.WithHelp("p/b", "previous song"),
+		key.WithKeys("p"),
+		key.WithHelp("p", "previous song"),
 	),
 	PlayPause: key.NewBinding(
-		key.WithKeys("space"),
+		key.WithKeys(" "),
 		key.WithHelp("space", "play/pause"),
 	),
 	Next: key.NewBinding(
