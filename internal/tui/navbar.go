@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 // Dont format
@@ -16,11 +17,14 @@ var _ tea.Model = (*navbarModel)(nil)
 
 type navbarModel struct {
 	width int
+
+	deviceSelector DeviceSelectorModel
 }
 
-func newNavbar() navbarModel {
-
-	return navbarModel{}
+func newNavbar(spotifyState *state.SpotifyState) navbarModel {
+	return navbarModel{
+		deviceSelector: NewDeviceSelector(spotifyState),
+	}
 }
 
 func (m navbarModel) Init() tea.Cmd {
@@ -54,6 +58,13 @@ func (m navbarModel) View() string {
 			Render("Help"),
 	)
 
+	/* devicesText := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render("d "),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			Render("Devices"),
+	) */
+
 	/* settings := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("s "),
 		lipgloss.NewStyle().
@@ -65,6 +76,7 @@ func (m navbarModel) View() string {
 		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(escText),
 		/* settings, */
 		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(helpText),
+		/* lipgloss.NewStyle().MarginTop(2).PaddingRight(2).PaddingLeft(2).Render(devicesText+m.deviceSelector.View()), */
 	)
 
 	leftSection := lipgloss.NewStyle().
