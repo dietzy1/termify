@@ -32,8 +32,7 @@ type applicationModel struct {
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
 
-	helpModel helpModel
-	showHelp  bool
+	showHelp bool
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -59,7 +58,6 @@ func newApplication(client *spotify.Client) applicationModel {
 		viewport:        newViewport(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
-		helpModel:       newHelp(),
 		errorBar:        errorMsg{
 			/* 	title:   "hello",
 			message: "world", */
@@ -146,6 +144,29 @@ func (m applicationModel) View() string {
 	viewport := m.viewport.View()
 	library := m.library.View()
 
+	playbackSection := m.renderPlaybackSection()
+
+	var navContent []string
+	navContent = append(navContent, m.navbar.View())
+	errorBar := m.renderErrorBar()
+	if errorBar != "" {
+		navContent = append(navContent, errorBar)
+	}
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Top, navContent...),
+		lipgloss.JoinHorizontal(lipgloss.Top,
+			library,
+			lipgloss.JoinVertical(lipgloss.Top,
+				m.searchBar.View(),
+				viewport)),
+		playbackSection,
+		"\r",
+	)
+}
+
+func (m applicationModel) renderPlaybackSection() string {
 	// Get the song info and volume control views
 	songInfoView := m.audioPlayer.songInfoView()
 	volumeControlView := m.audioPlayer.volumeControlView()
@@ -174,76 +195,15 @@ func (m applicationModel) View() string {
 		centeredAudioPlayer,
 	)
 
-	var navContent []string
-	navContent = append(navContent, m.navbar.View())
-	errorBar := m.viewErrorBar()
-	if errorBar != "" {
-		navContent = append(navContent, errorBar)
-	}
-
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		/* m.navbar.View(),
-		m.viewErrorBar(), */
-		lipgloss.JoinVertical(lipgloss.Top, navContent...),
-
-		lipgloss.JoinHorizontal(lipgloss.Top,
-			library,
-			lipgloss.JoinVertical(lipgloss.Top,
-				m.searchBar.View(),
-				viewport)),
-		combinedPlaybackSectionStyle.Render(
-			lipgloss.JoinHorizontal(lipgloss.Bottom,
-				songInfoView,
-				centerSection,
-				volumeControlView),
-		),
-		"\r",
+	return combinedPlaybackSectionStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Bottom,
+			songInfoView,
+			centerSection,
+			volumeControlView),
 	)
 }
 
-func (m applicationModel) viewHelp() string {
-
-	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
-	songInfoView := m.audioPlayer.songInfoView()
-	volumeControlView := m.audioPlayer.volumeControlView()
-
-	// Calculate the available width for the center section
-	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
-
-	centeredPlaybackControls := lipgloss.NewStyle().
-		Width(availableWidth).
-		Align(lipgloss.Center).
-		Render(m.playbackControl.View())
-
-	centeredAudioPlayer := lipgloss.NewStyle().
-		Width(availableWidth).
-		Align(lipgloss.Center).
-		Render(m.audioPlayer.View())
-
-	// Join them vertically
-	centerSection := lipgloss.JoinVertical(
-		lipgloss.Center,
-		centeredPlaybackControls,
-		centeredAudioPlayer,
-	)
-
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		m.navbar.View(),
-		m.viewErrorBar(),
-		lipgloss.NewStyle().Height(m.height-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)).Render(m.helpModel.View()),
-		combinedPlaybackSectionStyle.Render(
-			lipgloss.JoinHorizontal(lipgloss.Bottom,
-				songInfoView,
-				centerSection,
-				volumeControlView),
-		),
-		"\r",
-	)
-}
-
-func (m applicationModel) viewErrorBar() string {
+func (m applicationModel) renderErrorBar() string {
 	if m.errorBar.title == "" || m.errorBar.message == "" {
 		return ""
 	}
@@ -272,7 +232,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 
 	errorHeight := 0
 	if m.errorBar.title != "" {
-		errorHeight = lipgloss.Height(m.viewErrorBar())
+		errorHeight = lipgloss.Height(m.renderErrorBar())
 		log.Println("Error height:", errorHeight)
 	}
 
@@ -318,14 +278,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		Width: msg.Width,
 	}, m.audioPlayer); ok {
 		m.audioPlayer = updatedAudioPlayer
-		cmds = append(cmds, cmd)
-	}
-
-	if updatedHelp, cmd, ok := updateSubmodel(m.helpModel, tea.WindowSizeMsg{
-		Width:  msg.Width,
-		Height: msg.Height + 2,
-	}, m.helpModel); ok {
-		m.helpModel = updatedHelp
 		cmds = append(cmds, cmd)
 	}
 

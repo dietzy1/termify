@@ -1,41 +1,26 @@
 package tui
 
 import (
-	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type helpModel struct {
-	width, height int
-	keys          KeyMap
+func (m applicationModel) viewHelp() string {
+	playbackSection := m.renderPlaybackSection()
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		m.navbar.View(),
+		lipgloss.JoinVertical(lipgloss.Top,
+			m.renderHelp(),
+			playbackSection,
+			"\r",
+		))
 }
 
-func newHelp() helpModel {
-	return helpModel{
-		keys: DefaultKeyMap,
-	}
-}
-
-func (m helpModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		log.Println("Help: Window size message received", msg.Width, msg.Height)
-		m.width = msg.Width
-		m.height = msg.Height
-	}
-	return m, nil
-}
-
-func (m helpModel) View() string {
-	// Styles
+func (m applicationModel) renderHelp() string {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
 		Bold(true).
@@ -59,27 +44,29 @@ func (m helpModel) View() string {
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(BorderColor)).
-		Width(m.width - 2).Align(lipgloss.Center).Height(m.height - 2)
+		Width(m.width - 3).
+		Align(lipgloss.Center).
+		Height(m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 3)
 
 	// Group key bindings by category
 	navigationBindings := []key.Binding{
-		m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right,
-		m.keys.CycleFocusForward, m.keys.CycleFocusBackward,
-		m.keys.Return,
+		DefaultKeyMap.Up, DefaultKeyMap.Down, DefaultKeyMap.Left, DefaultKeyMap.Right,
+		DefaultKeyMap.CycleFocusForward, DefaultKeyMap.CycleFocusBackward,
+		DefaultKeyMap.Return,
 	}
 
 	actionBindings := []key.Binding{
-		m.keys.Select, m.keys.Copy,
+		DefaultKeyMap.Select, DefaultKeyMap.Copy,
 	}
 
 	systemBindings := []key.Binding{
-		m.keys.Help, m.keys.Quit, m.keys.Settings,
+		DefaultKeyMap.Help, DefaultKeyMap.Quit, DefaultKeyMap.Settings,
 	}
 
 	mediaBindings := []key.Binding{
-		m.keys.VolumeUp, m.keys.VolumeDown, m.keys.VolumeMute,
-		m.keys.Previous, m.keys.PlayPause, m.keys.Next,
-		m.keys.Shuffle, m.keys.Repeat,
+		DefaultKeyMap.VolumeUp, DefaultKeyMap.VolumeDown, DefaultKeyMap.VolumeMute,
+		DefaultKeyMap.Previous, DefaultKeyMap.PlayPause, DefaultKeyMap.Next,
+		DefaultKeyMap.Shuffle, DefaultKeyMap.Repeat,
 	}
 
 	// Function to render a section of key bindings
@@ -167,7 +154,6 @@ func (m helpModel) View() string {
 		)
 	}
 
-	// Apply container style and center in available space
-	styledContent := containerStyle.Render(helpContent)
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, styledContent)
+	return containerStyle.Render(helpContent)
+
 }
