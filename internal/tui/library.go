@@ -30,6 +30,7 @@ type libraryModel struct {
 	err    error
 
 	spotifyState *state.SpotifyState
+	isFocused    bool
 }
 
 func newLibrary(spotifyState *state.SpotifyState) libraryModel {
@@ -95,9 +96,8 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		log.Printf("Library: Updating window size to height: %d", msg.Height)
 		m.height = msg.Height
-		m.list.SetHeight(m.height)
+		m.list.SetHeight(m.height - 2)
 		return m, nil
 
 	case state.PlaylistsUpdatedMsg:
@@ -143,5 +143,10 @@ func (m libraryModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error loading playlists: %v", m.err)
 	}
-	return m.list.View()
+
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(getBorderStyle(m.isFocused)).
+		Render(m.list.View())
+
 }

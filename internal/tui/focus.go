@@ -9,18 +9,11 @@ type FocusedModel int
 
 const (
 	FocusLibrary FocusedModel = iota
+	FocusSearchBar
 	FocusViewport
 )
 
-var focusStyle = lipgloss.NewStyle().
-	Border(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color(PrimaryColor))
-
-var unfocusedStyle = lipgloss.NewStyle().
-	Border(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color(BorderColor))
-
-const focusModelCount = 2
+const focusModelCount = 3
 
 func (m *applicationModel) cycleFocus() {
 	m.focusedModel = (m.focusedModel + 1) % focusModelCount
@@ -32,8 +25,8 @@ func (m *applicationModel) cycleFocusBackward() {
 
 func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	switch m.focusedModel {
 
+	switch m.focusedModel {
 	case FocusLibrary:
 		library, cmd := m.library.Update(msg)
 		m.library = library.(libraryModel)
@@ -43,13 +36,20 @@ func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 		viewport, cmd := m.viewport.Update(msg)
 		m.viewport = viewport.(viewportModel)
 		cmds = append(cmds, cmd)
+
+	case FocusSearchBar:
+		searchBar, cmd := m.searchBar.Update(msg)
+		m.searchBar = searchBar.(searchbarModel)
+		cmds = append(cmds, cmd)
 	}
+
 	return m, tea.Batch(cmds...)
 }
 
-func applyFocusStyle(isFocused bool) lipgloss.Style {
+// Helper function to get border style based on focus state
+func getBorderStyle(isFocused bool) lipgloss.Color {
 	if isFocused {
-		return focusStyle
+		return lipgloss.Color(PrimaryColor)
 	}
-	return unfocusedStyle
+	return lipgloss.Color(BorderColor)
 }

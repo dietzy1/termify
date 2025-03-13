@@ -47,10 +47,10 @@ func (m playbackControlsModel) View() string {
 		Bold(true).
 		Padding(0, 3).
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor))
+		BorderForeground(BorderColor)
 
 	var activeStyle = baseStyle.
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(PrimaryColor)
 
 	if m.width < SHRINKWIDTH {
 		baseStyle = baseStyle.Padding(0, 1)

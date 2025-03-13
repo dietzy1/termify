@@ -1,24 +1,31 @@
 package tui
 
 import (
+	"log"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dietzy1/termify/internal/state"
 )
 
 var _ tea.Model = (*searchbarModel)(nil)
 
 type searchbarModel struct {
-	width     int
+	width int
+
 	textInput textinput.Model
 	searching bool
+	isFocused bool
+
+	spotifyState *state.SpotifyState
 }
 
-func newSearchbar() searchbarModel {
+func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search tracks..."
-	ti.CharLimit = 50
+	ti.CharLimit = 25
 	ti.Width = 30
 
 	// Apply styles
@@ -32,8 +39,10 @@ func newSearchbar() searchbarModel {
 		Foreground(lipgloss.Color(TextColor))
 
 	return searchbarModel{
-		textInput: ti,
-		searching: false,
+		textInput:    ti,
+		searching:    false,
+		isFocused:    false,
+		spotifyState: spotifyState,
 	}
 }
 
@@ -47,7 +56,7 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.textInput.Width = m.width - 2
+		m.textInput.Width = m.width
 
 	case tea.KeyMsg:
 		// Handle search mode toggle
@@ -72,7 +81,12 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.searching = false
 				m.textInput.Blur()
-				return m, nil
+
+				// Perform search
+				searchTerm := m.textInput.Value()
+				log.Printf("Viewport: Searching for tracks with term: %s", searchTerm)
+				return m, m.spotifyState.SearchEverything(searchTerm)
+
 			default:
 				var inputCmd tea.Cmd
 				m.textInput, inputCmd = m.textInput.Update(msg)
@@ -86,12 +100,15 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m searchbarModel) View() string {
-	// Create search bar style
+	/* searchStyle := getBorderStyle(m.isFocused).
+	Padding(0, 1).
+	Width(m.width - 2) */
+
 	searchStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
 		Padding(0, 1).
-		Width(m.width - 2)
+		Width(m.width - 2).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(getBorderStyle(m.isFocused))
 
 	// Search bar with indicator
 	searchPrefix := "🔍 "

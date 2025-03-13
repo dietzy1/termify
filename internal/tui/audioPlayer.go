@@ -25,7 +25,7 @@ func newAudioPlayer(spotifyState *state.SpotifyState) audioPlayerModel {
 	return audioPlayerModel{
 		width: 0,
 		bar: progress.New(
-			progress.WithScaledGradient(PrimaryColor, SecondaryColor),
+			progress.WithScaledGradient("#1db954", "#212121"),
 			progress.WithoutPercentage(),
 		),
 		spotifyState: spotifyState,

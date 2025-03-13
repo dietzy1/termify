@@ -10,21 +10,30 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+// ErrorMsg represents an error that should be displayed to the user
+type errorMsg struct {
+	title   string
+	message string
+}
+
 type applicationModel struct {
 	width, height int
 
 	spotifyState *state.SpotifyState
 
-	focusedModel    FocusedModel
-	navbar          navbarModel
-	library         libraryModel
+	focusedModel FocusedModel
+
+	errorBar errorMsg
+	navbar   navbarModel
+	library  libraryModel
+
+	searchBar       searchbarModel
 	viewport        viewportModel
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
 
 	helpModel helpModel
 	showHelp  bool
-	//showError bool
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -46,11 +55,15 @@ func newApplication(client *spotify.Client) applicationModel {
 		spotifyState:    spotifyState,
 		navbar:          newNavbar(spotifyState),
 		library:         newLibrary(spotifyState),
+		searchBar:       newSearchbar(spotifyState),
 		viewport:        newViewport(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
 		helpModel:       newHelp(),
-		//showError:       true,
+		errorBar:        errorMsg{
+			/* 	title:   "hello",
+			message: "world", */
+		},
 	}
 }
 
@@ -60,12 +73,11 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case state.PlayerStateUpdatedMsg:
-		// Update playbackControl with new state
 		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
 			m.playbackControl = updatedPlaybackControl
 			cmds = append(cmds, cmd)
 		}
-		// Update audioPlayer with new state
+
 		if updatedAudioPlayer, cmd, ok := updateSubmodel(m.audioPlayer, msg, m.audioPlayer); ok {
 			m.audioPlayer = updatedAudioPlayer
 			cmds = append(cmds, cmd)
@@ -80,7 +92,6 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case state.TracksUpdatedMsg:
-		// Update viewport with new tracks
 		if updatedViewport, cmd, ok := updateSubmodel(m.viewport, msg, m.viewport); ok {
 			m.viewport = updatedViewport
 			cmds = append(cmds, cmd)
@@ -123,19 +134,17 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m applicationModel) View() string {
-
-	//const error = true
-
 	if m.showHelp {
 		return m.viewHelp()
 	}
 
-	libraryStyle := applyFocusStyle(m.focusedModel == FocusLibrary)
-	viewportStyle := applyFocusStyle(m.focusedModel == FocusViewport)
-	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
+	// Update focus state for components
+	m.library.isFocused = m.focusedModel == FocusLibrary
+	m.viewport.isFocused = m.focusedModel == FocusViewport
+	m.searchBar.isFocused = m.focusedModel == FocusSearchBar
 
-	viewport := viewportStyle.Render(m.viewport.View())
-	library := libraryStyle.Render(m.library.View())
+	viewport := m.viewport.View()
+	library := m.library.View()
 
 	// Get the song info and volume control views
 	songInfoView := m.audioPlayer.songInfoView()
@@ -143,6 +152,9 @@ func (m applicationModel) View() string {
 
 	// Calculate the available width for the center section
 	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
+
+	// Style for the playback section
+	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
 
 	// Center both components individually
 	centeredPlaybackControls := lipgloss.NewStyle().
@@ -162,25 +174,24 @@ func (m applicationModel) View() string {
 		centeredAudioPlayer,
 	)
 
-	/* errorBar := lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#ff4444")).
-	Border(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("#ff4444")).
-	Width(m.width-2).
-	Height(2).
-	Padding(0, 1).
-	Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		"Error: Critical System Failure",
-		"Details: Unable to connect to Spotify API. Please check your internet connection.",
-	)) */
+	var navContent []string
+	navContent = append(navContent, m.navbar.View())
+	errorBar := m.viewErrorBar()
+	if errorBar != "" {
+		navContent = append(navContent, errorBar)
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
+		/* m.navbar.View(),
+		m.viewErrorBar(), */
+		lipgloss.JoinVertical(lipgloss.Top, navContent...),
 
-		m.navbar.View(),
-		/* errorBar, */
-		lipgloss.JoinHorizontal(lipgloss.Top, library, viewport),
+		lipgloss.JoinHorizontal(lipgloss.Top,
+			library,
+			lipgloss.JoinVertical(lipgloss.Top,
+				m.searchBar.View(),
+				viewport)),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
 				songInfoView,
@@ -220,6 +231,7 @@ func (m applicationModel) viewHelp() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		m.navbar.View(),
+		m.viewErrorBar(),
 		lipgloss.NewStyle().Height(m.height-lipgloss.Height(m.navbar.View())-lipgloss.Height(centerSection)).Render(m.helpModel.View()),
 		combinedPlaybackSectionStyle.Render(
 			lipgloss.JoinHorizontal(lipgloss.Bottom,
@@ -231,18 +243,40 @@ func (m applicationModel) viewHelp() string {
 	)
 }
 
+func (m applicationModel) viewErrorBar() string {
+	if m.errorBar.title == "" || m.errorBar.message == "" {
+		return ""
+	}
+
+	errorBar := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#ff4444")).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#ff4444")).
+		Width(m.width-2).
+		Height(2).
+		Padding(0, 1)
+
+	return errorBar.Render(lipgloss.JoinVertical(
+		lipgloss.Left,
+		lipgloss.NewStyle().
+			Bold(true).
+			Render("Error: "+m.errorBar.title),
+		"Details: "+m.errorBar.message,
+	))
+}
+
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {
 	var cmds []tea.Cmd
 	m.width = msg.Width
-	m.height = msg.Height // Yet to use this for anything really
-	//Check if errorMsg exists
+	m.height = msg.Height
 
-	var errorSubstracter int = 0
-	/* if m.showError {
-		errorSubstracter = 4
-	} */
+	errorHeight := 0
+	if m.errorBar.title != "" {
+		errorHeight = lipgloss.Height(m.viewErrorBar())
+		log.Println("Error height:", errorHeight)
+	}
 
-	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 3 + errorSubstracter
+	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 1 + errorHeight
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{
 		Width: msg.Width,
@@ -252,16 +286,22 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}
 
 	if updatedLibrary, cmd, ok := updateSubmodel(m.library, tea.WindowSizeMsg{
-		Width:  28,
 		Height: msg.Height,
 	}, m.library); ok {
 		m.library = updatedLibrary
 		cmds = append(cmds, cmd)
 	}
 
+	if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, tea.WindowSizeMsg{
+		Width: msg.Width - lipgloss.Width(m.library.View()),
+	}, m.searchBar); ok {
+		m.searchBar = updatedSearchBar
+		cmds = append(cmds, cmd)
+	}
+
 	if updatedViewport, cmd, ok := updateSubmodel(m.viewport, tea.WindowSizeMsg{
-		Width:  msg.Width - 4 - m.library.list.Width(),
-		Height: msg.Height,
+		Width:  msg.Width - lipgloss.Width(m.library.View()),
+		Height: msg.Height - lipgloss.Height(m.searchBar.View()),
 	}, m.viewport); ok {
 		m.viewport = updatedViewport
 		cmds = append(cmds, cmd)

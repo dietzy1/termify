@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
@@ -19,15 +19,23 @@ var _ tea.Model = (*viewportModel)(nil)
 type viewportModel struct {
 	width, height int
 	table         table.Model
-	//tracks        []spotify.PlaylistItem // Store tracks for selection
-	//allTracks     []spotify.PlaylistItem // Store all tracks for filtering
-	searchInput textinput.Model // Text input for search
-	searching   bool            // Whether we're in search mode
+	isFocused     bool
 
 	spotifyState *state.SpotifyState
 }
 
+// item implements list.Item interface for display in lists
+type item struct {
+	title string
+	desc  string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.desc }
+func (i item) FilterValue() string { return i.title }
+
 func createTable() table.Model {
+
 	return table.New([]table.Column{
 		table.NewColumn("#", "#", 4).WithStyle(lipgloss.NewStyle().Align(lipgloss.Center)),
 		table.NewFlexColumn("title", "Title", 1),   // Flex column with weight 3 4
@@ -37,32 +45,26 @@ func createTable() table.Model {
 	}).WithRows([]table.Row{}).HeaderStyle(
 		lipgloss.NewStyle().
 			Bold(true).
-			BorderForeground(lipgloss.Color(BackgroundColor)).
+			BorderForeground(lipgloss.Color(BorderColor)).
 			Underline(true),
 	).WithBaseStyle(
 		lipgloss.NewStyle().
 			Align(lipgloss.Left).
-			BorderForeground(lipgloss.Color(BackgroundColor)),
+			BorderForeground(lipgloss.Color(BorderColor)),
 	).Focused(true).HighlightStyle(
 		lipgloss.NewStyle().
 			Background(lipgloss.Color(BackgroundColor)).
 			Foreground(lipgloss.Color(PrimaryColor)).
 			Padding(0, 0, 0, 1).Bold(true),
+	).Border(
+		RoundedTableBorders,
 	)
 }
 
 func newViewport(spotifyState *state.SpotifyState) viewportModel {
-	ti := textinput.New()
-	ti.Placeholder = "Search tracks..."
-	ti.CharLimit = 50
-	ti.Width = 30 // Will be adjusted based on window width
 
 	return viewportModel{
-		table: createTable(),
-		//tracks:       make([]spotify.PlaylistItem, 0),
-		//allTracks:    make([]spotify.PlaylistItem, 0),
-		searchInput:  ti,
-		searching:    false,
+		table:        createTable(),
 		spotifyState: spotifyState,
 	}
 }
@@ -77,16 +79,13 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 
-		// Adjust search input width
-		m.searchInput.Width = m.width - 2
-
 		// This check is a panic safeguard
-		if m.height-7 < 0 { // One more line for search bar
+		if m.height-7 < 0 {
 			m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(1)
 			return m, nil
 		}
 
-		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height - 1 - 2).WithPageSize(m.height - 9)
+		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 9)
 		log.Printf("Viewport width: %d, height: %d", m.width, m.height)
 
 	case state.TracksUpdatedMsg:
@@ -100,35 +99,6 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle keyboard events for table navigation and search
 	case tea.KeyMsg:
-		// Handle search mode toggle
-		if key.Matches(msg, key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search"))) {
-			m.searching = !m.searching
-			if m.searching {
-				m.searchInput.Focus()
-				return m, textinput.Blink
-			} else {
-				m.searchInput.Blur()
-			}
-			return m, nil
-		}
-
-		// Handle search input when in search mode
-		if m.searching {
-			switch msg.String() {
-			case "esc":
-				m.searching = false
-				m.searchInput.Blur()
-				return m, nil
-			case "enter":
-				m.searching = false
-				m.searchInput.Blur()
-				return m, nil
-			default:
-				var inputCmd tea.Cmd
-				m.searchInput, inputCmd = m.searchInput.Update(msg)
-				return m, inputCmd
-			}
-		}
 
 		// Handle regular navigation when not in search mode
 		switch {
@@ -158,28 +128,145 @@ func (m viewportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m viewportModel) View() string {
-	// Create search bar style
-	searchStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
-		Padding(0, 1).
-		Width(m.width - 2)
+// Viewport table schema:
+// Tracks
+// Albums
+// Artists
+// Playlists
+func createLists(width, height int) string {
+	listWidth := (width / 2)
+	upperListsHeight := (height / 2) - 1
+	lowerListsHeight := height - upperListsHeight - 4
 
-	// Search bar with indicator
-	searchPrefix := "🔍 "
-	if !m.searching {
-		searchPrefix = "/ "
+	// Mock data for lists
+	trackItems := []list.Item{
+		item{title: "Bohemian Rhapsody and very long title to test", desc: "Queen"},
+		item{title: "Imagine", desc: "John Lennon"},
+		item{title: "Billie Jean", desc: "Michael Jackson"},
 	}
 
-	searchBar := searchStyle.Render(searchPrefix + m.searchInput.View())
+	playlistItems := []list.Item{
+		item{title: "My Mix", desc: "Custom playlist"},
+		item{title: "Workout Mix", desc: "Energetic songs"},
+		item{title: "Chill Vibes", desc: "Relaxing tunes"},
+	}
 
-	// Combine search bar with table
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		searchBar,
-		m.table.View(),
+	albumItems := []list.Item{
+		item{title: "A Night at the Opera", desc: "Queen"},
+		item{title: "Thriller", desc: "Michael Jackson"},
+		item{title: "Abbey Road", desc: "The Beatles"},
+	}
+
+	artistItems := []list.Item{
+		item{title: "Queen", desc: "Rock band"},
+		item{title: "Michael Jackson", desc: "Pop artist"},
+		item{title: "The Beatles", desc: "Rock band"},
+	}
+
+	// Create delegates
+	delegate := list.NewDefaultDelegate()
+
+	var itemWidth = listWidth - 2
+
+	delegate.Styles.NormalTitle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#ffffff")).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
+		Foreground(lipgloss.Color(TextColor)).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(lipgloss.Color(PrimaryColor)).
+		Foreground(lipgloss.Color(PrimaryColor)).
+		Padding(0, 0, 0, 1).
+		Bold(true).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(PrimaryColor)).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	// Create lists
+	trackList := list.New(trackItems, delegate, listWidth, upperListsHeight)
+	trackList.Title = "Tracks"
+	trackList.SetShowStatusBar(false)
+	trackList.SetFilteringEnabled(false)
+	trackList.SetShowHelp(false)
+	trackList.DisableQuitKeybindings()
+
+	playlistList := list.New(playlistItems, delegate, listWidth, upperListsHeight)
+	playlistList.Title = "Playlists"
+	playlistList.SetShowStatusBar(false)
+	playlistList.SetFilteringEnabled(false)
+	playlistList.SetShowHelp(false)
+	playlistList.DisableQuitKeybindings()
+
+	albumList := list.New(albumItems, delegate, listWidth, lowerListsHeight)
+	albumList.Title = "Albums"
+	albumList.SetShowStatusBar(false)
+	albumList.SetFilteringEnabled(false)
+	albumList.SetShowHelp(false)
+	albumList.DisableQuitKeybindings()
+
+	artistList := list.New(artistItems, delegate, listWidth, lowerListsHeight)
+	artistList.Title = "Artists"
+	artistList.SetShowStatusBar(false)
+	artistList.SetFilteringEnabled(false)
+	artistList.SetShowHelp(false)
+	artistList.DisableQuitKeybindings()
+
+	// Style the lists
+	listStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(BorderColor)).
+		Padding(0, 0)
+
+	// Render all lists
+	topRow := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		listStyle.Render(trackList.View()),
+		listStyle.Render(playlistList.View()),
 	)
+
+	bottomRow := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		listStyle.Render(artistList.View()),
+		listStyle.Render(albumList.View()),
+	)
+
+	return lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
+}
+
+func (m viewportModel) View() string {
+	// Determine which view to show based on search mode
+	var contentView string
+	if false {
+		// Show lists when in search mode
+		contentView = createLists(m.width, m.height-3) // Subtract height for search bar
+	} else {
+		// Show table when not in search mode
+		m.table = m.table.Border(RoundedTableBorders).
+			HeaderStyle(
+				lipgloss.NewStyle().
+					BorderForeground(getBorderStyle(m.isFocused)))
+		m.table = m.table.WithBaseStyle(
+			lipgloss.NewStyle().BorderForeground(getBorderStyle(m.isFocused)),
+		)
+
+		contentView = m.table.View()
+	}
+
+	// Combine search bar with content
+	return lipgloss.JoinVertical(lipgloss.Left, contentView)
 }
 
 // Update table with tracks
