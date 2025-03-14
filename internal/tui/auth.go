@@ -17,18 +17,18 @@ import (
 )
 
 // Message types for authentication flow
-type AuthState int
+type authState int
 
 const (
-	StateAwaitingClientID AuthState = iota
-	StateAwaitingLogin
-	StateAuthComplete
+	stateAwaitingClientID authState = iota
+	stateAwaitingLogin
+	stateAuthComplete
 )
 
 type authModel struct {
 	input    textinput.Model
 	auth     authentication.Service
-	state    AuthState
+	state    authState
 	err      error
 	loginURL string
 	authChan <-chan authentication.AuthResult
@@ -45,7 +45,7 @@ func newAuthModel(auth authentication.Service) authModel {
 	return authModel{
 		auth:     auth,
 		input:    textInput,
-		state:    StateAwaitingClientID,
+		state:    stateAwaitingClientID,
 		err:      nil,
 		loginURL: "",
 		authChan: nil,
@@ -163,12 +163,12 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Error != nil {
 			log.Printf("Authentication error: %v", msg.Error)
 			m.authModel.err = msg.Error
-			m.authModel.state = StateAwaitingClientID
+			m.authModel.state = stateAwaitingClientID
 			return m, nil
 		}
 		if msg.Client != nil {
 			log.Printf("Authentication successful, transitioning to application")
-			m.authModel.state = StateAuthComplete
+			m.authModel.state = stateAuthComplete
 			m = transitionToApplication(m, msg.Client)
 			return m, m.Init()
 		}
@@ -181,9 +181,9 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're already in the StateAwaitingLogin state, we don't need to set up another waitForAuth command
 			// This happens when we're using a stored client ID and we've already set up the waitForAuth command in Init()
-			alreadyWaiting := m.authModel.state == StateAwaitingLogin
+			alreadyWaiting := m.authModel.state == stateAwaitingLogin
 
-			m.authModel.state = StateAwaitingLogin
+			m.authModel.state = stateAwaitingLogin
 			m.authModel.copied = false // Reset copied state when showing new URL
 
 			if alreadyWaiting {
@@ -201,7 +201,7 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Select):
-			if m.authModel.state == StateAwaitingClientID {
+			if m.authModel.state == stateAwaitingClientID {
 				clientID := m.authModel.input.Value()
 				if len(clientID) != 32 {
 					m.authModel.err = errClientID
@@ -213,7 +213,7 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, waitForAuth(m.authModel.authChan)
 			}
 		case key.Matches(msg, DefaultKeyMap.Copy):
-			if m.authModel.state == StateAwaitingLogin && msg.String() == "c" {
+			if m.authModel.state == stateAwaitingLogin && msg.String() == "c" {
 				if err := clipboard.WriteAll(m.authModel.loginURL); err != nil {
 					log.Printf("Failed to copy to clipboard: %v", err)
 					return m, nil
@@ -224,7 +224,7 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	// Handle text input updates only if we're awaiting client ID
-	if m.authModel.state == StateAwaitingClientID {
+	if m.authModel.state == stateAwaitingClientID {
 		m.authModel.input, cmd = m.authModel.input.Update(msg)
 	}
 	return m, cmd
@@ -301,7 +301,7 @@ func (m model) viewAuth() string {
 	)
 
 	switch m.authModel.state {
-	case StateAwaitingClientID:
+	case stateAwaitingClientID:
 		instructions := []string{
 			"Getting started:",
 			"1. Visit https://developer.spotify.com/dashboard",
@@ -345,7 +345,7 @@ func (m model) viewAuth() string {
 			)),
 		))
 
-	case StateAwaitingLogin:
+	case stateAwaitingLogin:
 		statusText := "Press c to copy URL"
 		if m.authModel.copied {
 			statusText = "✓ URL copied to clipboard!"
@@ -362,7 +362,7 @@ func (m model) viewAuth() string {
 			)),
 		))
 
-	case StateAuthComplete:
+	case stateAuthComplete:
 		return containerStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Center,
 			LogoStyle.Render(logo),
@@ -393,7 +393,7 @@ func (m *authModel) Init() tea.Cmd {
 	}
 	log.Printf("Found stored client ID: %s", clientID)
 	log.Println("Setting state to StateAwaitingLogin")
-	m.state = StateAwaitingLogin
+	m.state = stateAwaitingLogin
 
 	log.Println("Starting auth with stored client ID")
 	m.authChan = m.auth.StartAuth(context.Background(), clientID)

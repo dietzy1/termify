@@ -100,17 +100,12 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m searchbarModel) View() string {
-	/* searchStyle := getBorderStyle(m.isFocused).
-	Padding(0, 1).
-	Width(m.width - 2) */
-
 	searchStyle := lipgloss.NewStyle().
 		Padding(0, 1).
 		Width(m.width - 2).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(getBorderStyle(m.isFocused))
 
-	// Search bar with indicator
 	searchPrefix := "🔍 "
 	if !m.searching {
 		searchPrefix = "/ "

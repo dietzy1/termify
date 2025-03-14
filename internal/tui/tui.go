@@ -28,16 +28,16 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-type AppState int
+type appState int
 
 const (
-	authenticating AppState = iota
+	authenticating appState = iota
 	application
 )
 
 type model struct {
 	width, height int
-	state         AppState
+	state         appState
 
 	authModel        authModel
 	applicationModel applicationModel

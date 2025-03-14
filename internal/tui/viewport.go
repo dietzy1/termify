@@ -248,9 +248,9 @@ func createLists(width, height int) string {
 func (m viewportModel) View() string {
 	// Determine which view to show based on search mode
 	var contentView string
-	if false {
+	if true {
 		// Show lists when in search mode
-		contentView = createLists(m.width, m.height-3) // Subtract height for search bar
+		contentView = createLists(m.width, m.height) // Subtract height for search bar
 	} else {
 		// Show table when not in search mode
 		m.table = m.table.Border(RoundedTableBorders).
@@ -263,7 +263,6 @@ func (m viewportModel) View() string {
 
 		contentView = m.table.View()
 	}
-
 	// Combine search bar with content
 	return lipgloss.JoinVertical(lipgloss.Left, contentView)
 }

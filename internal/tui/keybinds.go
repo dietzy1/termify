@@ -57,8 +57,8 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("→/l", "next track"),
 	),
 	Select: key.NewBinding(
-		key.WithKeys("enter", "space"),
-		key.WithHelp("enter/space", "select track"),
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select track"),
 	),
 	AddToQueue: key.NewBinding(
 		key.WithKeys("q"),

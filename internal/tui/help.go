@@ -56,7 +56,7 @@ func (m applicationModel) renderHelp() string {
 	}
 
 	actionBindings := []key.Binding{
-		DefaultKeyMap.Select, DefaultKeyMap.Copy,
+		DefaultKeyMap.Select, DefaultKeyMap.Copy, DefaultKeyMap.Return, DefaultKeyMap.AddToQueue,
 	}
 
 	systemBindings := []key.Binding{
@@ -155,5 +155,4 @@ func (m applicationModel) renderHelp() string {
 	}
 
 	return containerStyle.Render(helpContent)
-
 }
