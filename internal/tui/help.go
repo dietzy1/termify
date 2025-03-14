@@ -42,7 +42,7 @@ func (m applicationModel) renderHelp() string {
 		Foreground(lipgloss.Color(TextColor))
 
 	containerStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.RoundedBorder(), true, false, true, false).
 		BorderForeground(lipgloss.Color(BorderColor)).
 		Width(m.width - 3).
 		Align(lipgloss.Center).

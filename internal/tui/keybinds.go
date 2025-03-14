@@ -14,9 +14,10 @@ type KeyMap struct {
 	CycleFocusBackward key.Binding
 
 	//Actions
-	Select key.Binding
-	Copy   key.Binding
-	Return key.Binding
+	Select     key.Binding
+	Copy       key.Binding
+	Return     key.Binding
+	AddToQueue key.Binding
 
 	// System
 	Quit     key.Binding
@@ -58,6 +59,10 @@ var DefaultKeyMap = KeyMap{
 	Select: key.NewBinding(
 		key.WithKeys("enter", "space"),
 		key.WithHelp("enter/space", "select track"),
+	),
+	AddToQueue: key.NewBinding(
+		key.WithKeys("q"),
+		key.WithHelp("q", "Add to queue"),
 	),
 	CycleFocusForward: key.NewBinding(
 		key.WithKeys("tab"),

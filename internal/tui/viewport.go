@@ -62,7 +62,6 @@ func createTable() table.Model {
 }
 
 func newViewport(spotifyState *state.SpotifyState) viewportModel {
-
 	return viewportModel{
 		table:        createTable(),
 		spotifyState: spotifyState,

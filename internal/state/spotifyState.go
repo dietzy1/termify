@@ -27,6 +27,11 @@ type SpotifyState struct {
 	// Cache map for playlist items
 	playlistItemsCache map[string]*spotify.PlaylistItemPage
 
+	// Queue of tracks to play
+	Queue []spotify.FullTrack
+	// Priority queue of tracks to play these are played before the rest of the queue
+	PriorityQueue []spotify.FullTrack
+
 	// Currently selected items
 	selectedPlaylistID string
 }
@@ -220,6 +225,13 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 		}
 		// This is unsafe and bad TODO: fix this later
 		s.DeviceState = devices
+
+		err = s.client.TransferPlayback(
+			context.TODO(),
+			devices[0].ID,
+			false,
+		)
+
 		return nil
 	}
 }
