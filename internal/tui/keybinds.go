@@ -23,6 +23,7 @@ type KeyMap struct {
 	Quit     key.Binding
 	Help     key.Binding
 	Settings key.Binding
+	Search   key.Binding
 
 	// Media controls
 	Shuffle    key.Binding
@@ -91,6 +92,10 @@ var DefaultKeyMap = KeyMap{
 	Settings: key.NewBinding(
 		key.WithKeys("ctrl+s"),
 		key.WithHelp("ctrl+s", "show settings view"),
+	),
+	Search: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "search"),
 	),
 	Return: key.NewBinding(
 		key.WithKeys("backspace", "esc"),

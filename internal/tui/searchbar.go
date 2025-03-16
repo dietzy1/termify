@@ -46,8 +46,45 @@ func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
 	}
 }
 
+/* type EnterSearchModeMsg struct{}
+type ExitSearchModeMsg struct{} */
+
 func (m searchbarModel) Init() tea.Cmd {
 	return textinput.Blink
+}
+
+// ToggleSearchMode toggles the search mode and returns appropriate commands
+func (m *searchbarModel) ToggleSearchMode() tea.Cmd {
+	m.searching = !m.searching
+	if m.searching {
+		m.textInput.Focus()
+		return textinput.Blink
+	} else {
+		m.textInput.Blur()
+
+	}
+	return nil
+}
+
+// EnterSearchMode enters search mode and returns appropriate commands
+func (m *searchbarModel) EnterSearchMode() tea.Cmd {
+	if m.searching {
+		return nil
+	}
+	m.searching = true
+	m.textInput.Focus()
+	return textinput.Blink
+}
+
+// ExitSearchMode exits search mode and returns appropriate commands
+func (m *searchbarModel) ExitSearchMode() tea.Cmd {
+	if !m.searching {
+		return nil
+	}
+	m.searching = false
+	m.textInput.SetValue("")
+	m.textInput.Blur()
+	return nil
 }
 
 func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -59,30 +96,10 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textInput.Width = m.width
 
 	case tea.KeyMsg:
-		// Handle search mode toggle
-		if key.Matches(msg, key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search"))) {
-			m.searching = !m.searching
-			if m.searching {
-				m.textInput.Focus()
-				return m, textinput.Blink
-			} else {
-				m.textInput.Blur()
-			}
-			return m, nil
-		}
-
 		// Handle search input when in search mode
 		if m.searching {
-			switch msg.String() {
-			case "esc":
-				m.searching = false
-				m.textInput.Blur()
-				return m, nil
-			case "enter":
-				m.searching = false
-				m.textInput.Blur()
-
-				// Perform search
+			switch {
+			case key.Matches(msg, DefaultKeyMap.Select):
 				searchTerm := m.textInput.Value()
 				log.Printf("Viewport: Searching for tracks with term: %s", searchTerm)
 				return m, m.spotifyState.SearchEverything(searchTerm)
