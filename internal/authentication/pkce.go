@@ -14,13 +14,13 @@ var encoding = base64.RawURLEncoding
 
 type verifier []byte
 
-const LenMax = 128
-const LenMin = 43
+const lenMax = 128
+const lenMin = 43
 
 const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"
 
 func newVerifier(l int) verifier {
-	if l < LenMin || l > LenMax {
+	if l < lenMin || l > lenMax {
 		panic(fmt.Sprintf("invalid verifier length: %d", l))
 	}
 

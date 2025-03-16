@@ -3,89 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Complete</title>
+    <title>Spotify Authentication Complete</title>
     <style>
+        /* Spotify-themed styles */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #191414 0%, #121212 100%);
             height: 100vh;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
+            color: #FFFFFF;
         }
         .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px rgba(255, 255, 255, 0.05);
             text-align: center;
             max-width: 90%;
             width: 500px;
+        }
+        .logo-container {
+            margin-bottom: 2rem;
+            position: relative;
         }
         .logo {
             font-family: monospace;
             white-space: pre;
             display: inline-block;
-            margin-bottom: 1.5rem;
-            color: #2d3748;
+            color: #1DB954;
+            font-size: 1.1rem;
+            text-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
+        }
+        .logo-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(29, 185, 84, 0.2) 0%, rgba(29, 185, 84, 0) 70%);
+            z-index: -1;
+            filter: blur(15px);
         }
         h1 {
-            color: #2d3748;
-            margin-bottom: 1rem;
-            font-size: 1.8rem;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 700;
         }
         p {
-            color: #4a5568;
+            color: #b3b3b3;
             font-size: 1.1rem;
             margin-bottom: 1.5rem;
+            line-height: 1.5;
         }
         .success-icon {
-            width: 60px;
-            height: 60px;
-            background: #48bb78;
+            width: 80px;
+            height: 80px;
+            background: #1DB954;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1.5rem;
+            margin: 0 auto 2rem;
+            position: relative;
+            box-shadow: 0 0 20px rgba(29, 185, 84, 0.6);
         }
         .success-icon::after {
             content: '';
-            width: 30px;
-            height: 15px;
-            border: 4px solid white;
+            width: 32px;
+            height: 20px;
+            border: 5px solid white;
             border-top: none;
             border-right: none;
             transform: rotate(-45deg);
             margin-top: -4px;
         }
-        .close-text {
-            font-size: 0.9rem;
-            color: #718096;
-            margin-top: 1rem;
+        .pulse {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(29, 185, 84, 0.4);
+            animation: pulse 2s infinite;
         }
+        .close-text {
+            font-size: 0.95rem;
+            color: #6a6a6a;
+            margin-top: 2rem;
+        }
+        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            70% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0; }
+        }
         .container {
-            animation: fadeIn 0.6s ease-out;
+            animation: fadeIn 0.8s ease-out;
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: #1DB954;
+            margin-left: 5px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        /* Spotify wave animation */
+        .sound-wave {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.5rem auto;
+            gap: 4px;
+        }
+        .sound-wave .bar {
+            display: inline-block;
+            width: 4px;
+            height: 100%;
+            background: #1DB954;
+            border-radius: 2px;
+            animation: sound-wave-animation 1.5s infinite ease-in-out;
+        }
+        .sound-wave .bar:nth-child(2) { animation-delay: 0.2s; }
+        .sound-wave .bar:nth-child(3) { animation-delay: 0.4s; }
+        .sound-wave .bar:nth-child(4) { animation-delay: 0.6s; }
+        .sound-wave .bar:nth-child(5) { animation-delay: 0.8s; }
+        
+        @keyframes sound-wave-animation {
+            0%, 100% { height: 8px; }
+            50% { height: 25px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <pre class="logo">
+        <div class="logo-container">
+            <div class="logo-glow"></div>
+            <pre class="logo">
  ______              _ ___    
 /_  __/__ ______ _  (_) _/_ __
  / / / -_) __/  ' \/ / _/ // /
 /_/  \__/_/ /_/_/_/_/_/ \_, / 
                        /___/  </pre>
-        <div class="success-icon"></div>
-        <h1>Login Completed Successfully!</h1>
-        <p>You have been successfully authenticated.</p>
-        <p class="close-text">You can now close this window safely.</p>
+            <span class="terminal-cursor"></span>
+        </div>
+        <div class="success-icon">
+            <div class="pulse"></div>
+        </div>
+        <h1>Authentication Successful</h1>
+        <div class="sound-wave">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <p>Your terminal application has been securely authenticated with Spotify.</p>
+        <p>You can now return to your terminal to continue your session.</p>
+        <p class="close-text">This window can be safely closed.</p>
     </div>
 </body>
 </html>

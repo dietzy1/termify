@@ -53,7 +53,7 @@ func NewSpotifyAuth(cfg spotifyAuthConfig) (*SpotifyAuth, error) {
 	}
 
 	return &SpotifyAuth{
-		verifier:     newVerifier(LenMax),
+		verifier:     newVerifier(lenMax),
 		authComplete: make(chan AuthResult, 1),
 		credManager:  credManager,
 	}, nil
