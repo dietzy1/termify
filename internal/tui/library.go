@@ -107,24 +107,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		log.Printf("Application: Converting %d playlists to list items", len(m.spotifyState.Playlists))
-		items := make([]list.Item, 0, len(m.spotifyState.Playlists))
-		for _, p := range m.spotifyState.Playlists {
-			title := p.Name
-			if title == "" {
-				title = "Untitled Playlist"
-			}
-			desc := p.Owner.DisplayName
-			if desc == "" {
-				desc = "Unknown Owner"
-			}
-
-			items = append(items, playlist{
-				title: title,
-				desc:  desc,
-				uri:   string(p.URI),
-			})
-		}
-		m.list.SetItems(items)
+		m.list.SetItems(m.convertPlaylistsToItems())
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 
 	case tea.KeyMsg:
@@ -149,4 +132,25 @@ func (m libraryModel) View() string {
 		BorderForeground(getBorderStyle(m.isFocused)).
 		Render(m.list.View())
 
+}
+
+func (m libraryModel) convertPlaylistsToItems() []list.Item {
+	items := make([]list.Item, 0, len(m.spotifyState.Playlists))
+	for _, p := range m.spotifyState.Playlists {
+		title := p.Name
+		if title == "" {
+			title = "Untitled Playlist"
+		}
+		desc := p.Owner.DisplayName
+		if desc == "" {
+			desc = "Unknown Owner"
+		}
+
+		items = append(items, playlist{
+			title: title,
+			desc:  desc,
+			uri:   string(p.URI),
+		})
+	}
+	return items
 }
