@@ -27,6 +27,13 @@ type SpotifyState struct {
 	// Cache map for playlist items
 	playlistItemsCache map[string]*spotify.PlaylistItemPage
 
+	SearchResults struct {
+		Tracks    []spotify.FullTrack
+		Artists   []spotify.FullArtist
+		Albums    []spotify.SimpleAlbum
+		Playlists []spotify.SimplePlaylist
+	}
+
 	// Queue of tracks to play
 	Queue []spotify.FullTrack
 	// Priority queue of tracks to play these are played before the rest of the queue
@@ -201,12 +208,6 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 	}
 }
 
-// We need to look at current playback and check if isPlaying is true firstly
-// We then need to compare progressMS  with durationMs and if it is equal then we need to refetch the current playback state and update the UI
-
-//TODO: this is actually important this if no device is active then we cannot play anything
-// TODO: We need to figure out if we also want to go with the librespot daemon way and perhabs use interfaces to define similar behaviour.
-
 func (s *SpotifyState) FetchDevices() tea.Cmd {
 	return func() tea.Msg {
 		devices, err := s.client.PlayerDevices(context.TODO())
@@ -235,22 +236,3 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 		return nil
 	}
 }
-
-/* func (s *SpotifyState) TransferPlaybackToTermify() tea.Cmd {
-
-	return func() tea.Msg {
-		devices, err := s.client.PlayerDevices(context.TODO())
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching player devices: %v", err)
-			return nil
-		}
-		log.Println("SpotifyState: Found devices:", devices)
-
-		s.client.TransferPlayback(
-			context.TODO(),
-			devices[0].ID,
-			false,
-		)
-		return StateUpdateMsg{}
-	}
-} */

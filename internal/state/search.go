@@ -9,12 +9,16 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+type SearchResultsUpdatedMsg struct {
+	Err error
+}
+
 func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Searching for: %s", query)
 		if query == "" {
 			log.Printf("SpotifyState: Invalid query")
-			return TracksUpdatedMsg{
+			return SearchResultsUpdatedMsg{
 				Err: fmt.Errorf("invalid query"),
 			}
 		}
@@ -22,7 +26,7 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 		results, err := s.client.Search(context.TODO(), query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist)
 		if err != nil {
 			log.Printf("SpotifyState: Error searching for tracks: %v", err)
-			return TracksUpdatedMsg{
+			return SearchResultsUpdatedMsg{
 				Err: err,
 			}
 		}
@@ -32,8 +36,13 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 		log.Printf("SpotifyState: Found %d albums", len(results.Albums.Albums))
 		log.Printf("SpotifyState: Found %d playlists", len(results.Playlists.Playlists))
 
+		s.SearchResults.Tracks = results.Tracks.Tracks
+		s.SearchResults.Artists = results.Artists.Artists
+		s.SearchResults.Albums = results.Albums.Albums
+		s.SearchResults.Playlists = results.Playlists.Playlists
+
 		log.Printf("SpotifyState: Found %d tracks", len(s.Tracks))
-		return TracksUpdatedMsg{
+		return SearchResultsUpdatedMsg{
 			Err: nil,
 		}
 	}

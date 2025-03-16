@@ -77,8 +77,16 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.updateListStyles(listWidth)
 
-	case tea.KeyMsg:
+	case state.SearchResultsUpdatedMsg:
+		// When search results are updated, update the view
+		if msg.Err == nil {
+			// Update the search results in the view
+			m.UpdateSearchResults()
+		} else {
+			log.Printf("Search view received error in search results: %v", msg.Err)
+		}
 
+	case tea.KeyMsg:
 		// For now, we'll just forward to all lists
 		// TODO: We need to implement focus management for the 4 lists
 		var cmd tea.Cmd
@@ -178,36 +186,64 @@ func (m *searchViewModel) SetFocus(isFocused bool) {
 }
 
 // UpdateSearchResults updates the lists with search results
-func (m *searchViewModel) UpdateSearchResults(query string) {
-	// This would be implemented to fetch and display actual search results
-	// For now, we'll use mock data
+func (m *searchViewModel) UpdateSearchResults() {
+	// Create empty slices for each type of item
+	var trackItems []list.Item
+	var playlistItems []list.Item
+	var albumItems []list.Item
+	var artistItems []list.Item
 
-	// Mock data for lists
-	trackItems := []list.Item{
-		item{title: "Bohemian Rhapsody", desc: "Queen"},
-		item{title: "Imagine", desc: "John Lennon"},
-		item{title: "Billie Jean", desc: "Michael Jackson"},
+	// Process track results
+	for _, track := range m.spotifyState.SearchResults.Tracks {
+		artistName := ""
+		if len(track.Artists) > 0 {
+			artistName = track.Artists[0].Name
+		}
+		trackItems = append(trackItems, item{
+			title: track.Name,
+			desc:  artistName,
+		})
 	}
 
-	playlistItems := []list.Item{
-		item{title: "My Mix", desc: "Custom playlist"},
-		item{title: "Workout Mix", desc: "Energetic songs"},
-		item{title: "Chill Vibes", desc: "Relaxing tunes"},
+	// Process playlist results
+	for _, playlist := range m.spotifyState.SearchResults.Playlists {
+		ownerName := ""
+		if playlist.Owner.DisplayName != "" {
+			ownerName = playlist.Owner.DisplayName
+		}
+		playlistItems = append(playlistItems, item{
+			title: playlist.Name,
+			desc:  ownerName,
+		})
 	}
 
-	albumItems := []list.Item{
-		item{title: "A Night at the Opera", desc: "Queen"},
-		item{title: "Thriller", desc: "Michael Jackson"},
-		item{title: "Abbey Road", desc: "The Beatles"},
+	// Process album results
+	for _, album := range m.spotifyState.SearchResults.Albums {
+		artistName := ""
+		if len(album.Artists) > 0 {
+			artistName = album.Artists[0].Name
+		}
+		albumItems = append(albumItems, item{
+			title: album.Name,
+			desc:  artistName,
+		})
 	}
 
-	artistItems := []list.Item{
-		item{title: "Queen", desc: "Rock band"},
-		item{title: "Michael Jackson", desc: "Pop artist"},
-		item{title: "The Beatles", desc: "Rock band"},
+	// Process artist results
+	for _, artist := range m.spotifyState.SearchResults.Artists {
+		// For artists, we don't have a specific description field in the API
+		// We could potentially use genres or popularity as a description
+		desc := "Artist"
+		if len(artist.Genres) > 0 {
+			desc = artist.Genres[0]
+		}
+		artistItems = append(artistItems, item{
+			title: artist.Name,
+			desc:  desc,
+		})
 	}
 
-	// Update the lists with the mock data
+	// Update the lists with the actual data
 	m.trackList.SetItems(trackItems)
 	m.playlistList.SetItems(playlistItems)
 	m.albumList.SetItems(albumItems)

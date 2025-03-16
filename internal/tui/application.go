@@ -103,6 +103,13 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
+	case state.SearchResultsUpdatedMsg:
+		if updatedSearchView, cmd, ok := updateSubmodel(m.searchView, msg, m.searchView); ok {
+			m.searchView = updatedSearchView
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
 	case state.PlaylistSelectedMsg:
 		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
 		return m, tea.Batch(cmds...)
