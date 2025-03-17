@@ -98,8 +98,8 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("/", "search"),
 	),
 	Return: key.NewBinding(
-		key.WithKeys("backspace", "esc"),
-		key.WithHelp("backspace/esc", "return to previous view"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "return to previous view"),
 	),
 	Shuffle: key.NewBinding(
 		key.WithKeys("s"),

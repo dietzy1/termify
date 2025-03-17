@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"log"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -11,6 +11,12 @@ import (
 )
 
 var _ tea.Model = (*searchbarModel)(nil)
+
+const debounceTime = time.Second
+
+type debouncedSearch struct {
+	searchTerm string
+}
 
 type searchbarModel struct {
 	width int
@@ -24,7 +30,7 @@ type searchbarModel struct {
 
 func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
 	ti := textinput.New()
-	ti.Placeholder = "Search tracks..."
+	ti.Placeholder = "What do you want to play?"
 	ti.CharLimit = 25
 	ti.Width = 30
 
@@ -46,34 +52,27 @@ func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
 	}
 }
 
-/* type EnterSearchModeMsg struct{}
-type ExitSearchModeMsg struct{} */
-
 func (m searchbarModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
 // ToggleSearchMode toggles the search mode and returns appropriate commands
-func (m *searchbarModel) ToggleSearchMode() tea.Cmd {
+func (m *searchbarModel) ToggleSearchMode() {
 	m.searching = !m.searching
 	if m.searching {
 		m.textInput.Focus()
-		return textinput.Blink
-	} else {
-		m.textInput.Blur()
-
+		return
 	}
-	return nil
+	m.textInput.Blur()
 }
 
 // EnterSearchMode enters search mode and returns appropriate commands
-func (m *searchbarModel) EnterSearchMode() tea.Cmd {
+func (m *searchbarModel) EnterSearchMode() {
 	if m.searching {
-		return nil
+		return
 	}
 	m.searching = true
 	m.textInput.Focus()
-	return textinput.Blink
 }
 
 // ExitSearchMode exits search mode and returns appropriate commands
@@ -95,19 +94,27 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.textInput.Width = m.width
 
+	case debouncedSearch:
+		if m.textInput.Value() == msg.searchTerm {
+			return m, m.spotifyState.SearchEverything(msg.searchTerm)
+		}
+
 	case tea.KeyMsg:
 		// Handle search input when in search mode
 		if m.searching {
 			switch {
-			case key.Matches(msg, DefaultKeyMap.Select):
-				searchTerm := m.textInput.Value()
-				log.Printf("Viewport: Searching for tracks with term: %s", searchTerm)
-				return m, m.spotifyState.SearchEverything(searchTerm)
-
+			case key.Matches(msg, DefaultKeyMap.Return):
+				m.searching = false
+				m.textInput.SetValue("")
+				m.textInput.Blur()
+				return m, nil
 			default:
-				var inputCmd tea.Cmd
-				m.textInput, inputCmd = m.textInput.Update(msg)
-				return m, inputCmd
+				m.textInput, cmd = m.textInput.Update(msg)
+				return m, tea.Sequence(cmd, tea.Tick(debounceTime, func(_ time.Time) tea.Msg {
+					return debouncedSearch{
+						searchTerm: m.textInput.Value(),
+					}
+				}))
 			}
 		}
 	}

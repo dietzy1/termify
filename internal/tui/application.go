@@ -40,6 +40,7 @@ func (m applicationModel) Init() tea.Cmd {
 	log.Println("Application: Initializing application model")
 	return tea.Batch(
 		tea.WindowSize(),
+		m.searchBar.Init(),
 		m.spotifyState.FetchPlaylists(),
 		m.spotifyState.FetchPlaybackState(),
 		/* 		m.spotifyState.FetchDevices(), */
@@ -77,6 +78,13 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case debouncedSearch:
+		if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
+			m.searchBar = updatedSearchBar
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
 	case state.PlayerStateUpdatedMsg:
 		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
 			m.playbackControl = updatedPlaybackControl
@@ -115,64 +123,17 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
-
 		log.Println("Updating model with message type", msg)
 		updatedModel, cmd, handled := m.handleGlobalKeys(msg)
 		m = updatedModel
 		if handled {
 			return m, cmd
 		}
-
 		switch {
-		// Handle search mode toggle with "/"
-		case key.Matches(msg, DefaultKeyMap.Search):
-			if m.searchBar.searching {
-				cmd = m.searchBar.ExitSearchMode()
-				// When exiting search mode, focus should return to the previous view
-				if m.focusedModel == FocusSearchBar || m.focusedModel == FocusSearchView {
-					m.focusedModel = FocusLibrary
-				}
-			} else {
-				cmd = m.searchBar.EnterSearchMode()
-				m.focusedModel = FocusSearchBar
-			}
-		case key.Matches(msg, DefaultKeyMap.Select) && m.focusedModel == FocusSearchBar:
-			// If we're in the search bar and press Enter, submit the search and focus the search view
-			if m.searchBar.searching {
-				// Submit search - use the existing key handling in searchbar's Update method
-				// The searchbar already handles Enter key to perform search
-				searchBar, cmd := m.searchBar.Update(msg)
-				m.searchBar = searchBar.(searchbarModel)
-				// Focus the search results
-				m.focusedModel = FocusSearchView
-				return m, cmd
-			} else {
-				// If search bar is empty and we press Enter, exit search mode
-				cmd = m.searchBar.ExitSearchMode()
-				m.focusedModel = FocusLibrary
-				return m, cmd
-			}
 		case key.Matches(msg, DefaultKeyMap.CycleFocusForward):
 			m.cycleFocus()
 		case key.Matches(msg, DefaultKeyMap.CycleFocusBackward):
 			m.cycleFocusBackward()
-		case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
-			cmd = m.searchBar.ExitSearchMode()
-			m.focusedModel = FocusLibrary
-			return m, cmd
-
-		case key.Matches(msg, DefaultKeyMap.Up) || key.Matches(msg, DefaultKeyMap.Down):
-			// If we're in the search bar and press Up/Down, move focus to the view below
-			if m.focusedModel == FocusSearchBar {
-				if m.searchBar.searching {
-					m.focusedModel = FocusSearchView
-				} else {
-					m.focusedModel = FocusPlaylistView
-				}
-				return m.updateFocusedModel(msg)
-			}
-			// Otherwise, let the focused model handle the Up/Down keys
-			return m.updateFocusedModel(msg)
 		default:
 			return m.updateFocusedModel(msg)
 		}
@@ -199,7 +160,14 @@ func (m applicationModel) View() string {
 	m.library.isFocused = m.focusedModel == FocusLibrary
 	m.searchBar.isFocused = m.focusedModel == FocusSearchBar
 	m.playlistView.isFocused = m.focusedModel == FocusPlaylistView
-	m.searchView.isFocused = m.focusedModel == FocusSearchView
+
+	// Set search view focus state
+	m.searchView.isFocused = m.isSearchViewFocus()
+
+	// If search view is focused, set the active list
+	if m.isSearchViewFocus() {
+		m.searchView.SetActiveList(m.focusedModel)
+	}
 
 	// Determine which view to show based on search state
 	var viewport string
@@ -363,52 +331,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	return m, tea.Batch(cmds...)
 }
 
-func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
-	var cmd tea.Cmd
-
-	log.Println("Handling global key:", msg)
-	switch {
-	case key.Matches(msg, DefaultKeyMap.Quit):
-		return m, tea.Quit, true
-	case key.Matches(msg, DefaultKeyMap.Help):
-		m.showHelp = !m.showHelp
-		return m, nil, true
-
-	// SearchBar should stop all other global events if active
-
-	case key.Matches(msg, DefaultKeyMap.PlayPause):
-		if m.spotifyState.PlayerState.Playing {
-			return m, m.spotifyState.PausePlayback(), true
-		}
-		return m, m.spotifyState.StartPlayback(), true
-
-	case key.Matches(msg, DefaultKeyMap.Next):
-		return m, m.spotifyState.NextTrack(), true
-	case key.Matches(msg, DefaultKeyMap.Previous):
-		return m, m.spotifyState.PreviousTrack(), true
-	case key.Matches(msg, DefaultKeyMap.Shuffle):
-		return m, m.spotifyState.ToggleShuffleMode(), true
-	case key.Matches(msg, DefaultKeyMap.Repeat):
-		return m, m.spotifyState.ToggleRepeatMode(), true
-	case key.Matches(msg, DefaultKeyMap.VolumeUp):
-		return m, m.spotifyState.IncreaseVolume(), true
-	case key.Matches(msg, DefaultKeyMap.VolumeDown):
-		return m, m.spotifyState.DecreaseVolume(), true
-	}
-
-	// If we're in help mode, check for Return key to exit help
-	if m.showHelp {
-		if key.Matches(msg, DefaultKeyMap.Return) {
-			m.showHelp = false
-			return m, nil, true
-		}
-	}
-
-	log.Println("Unhandled key:", msg)
-
-	return m, cmd, false
-}
-
 // renderNavigationHelp shows a simple help message for navigation
 func (m applicationModel) renderNavigationHelp() string {
 	var focusName string
@@ -421,9 +343,18 @@ func (m applicationModel) renderNavigationHelp() string {
 	case FocusPlaylistView:
 		focusName = "Playlist"
 		helpText = "Tab: Switch to library | /: Search"
-	case FocusSearchView:
-		focusName = "Search Results"
-		helpText = "Tab: Switch to library | /: Search"
+	case FocusSearchTracksView:
+		focusName = "Search Tracks"
+		helpText = "Tab: Cycle search views | /: Search"
+	case FocusSearchPlaylistsView:
+		focusName = "Search Playlists"
+		helpText = "Tab: Cycle search views | /: Search"
+	case FocusSearchArtistsView:
+		focusName = "Search Artists"
+		helpText = "Tab: Cycle search views | /: Search"
+	case FocusSearchAlbumsView:
+		focusName = "Search Albums"
+		helpText = "Tab: Cycle search views | /: Search"
 	case FocusSearchBar:
 		focusName = "Search"
 		helpText = "Enter: Submit search | Esc: Exit search | ↑/↓: Navigate to content"
@@ -434,5 +365,5 @@ func (m applicationModel) renderNavigationHelp() string {
 		Align(lipgloss.Center).
 		Width(m.width)
 
-	return helpStyle.Render("Focus: " + focusName + " | " + helpText + " | ?: Full help")
+	return helpStyle.Render("Focus: " + focusName + " | " + helpText)
 }
