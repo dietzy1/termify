@@ -127,58 +127,8 @@ func (m searchViewModel) View() string {
 		listStyle.Render(m.albumList.View()),
 	)
 
-	// Render all lists
-	/* topRow := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		listStyle.Render(m.renderListWithFullWidth(m.trackList, m.width/2)),
-		listStyle.Render(m.renderListWithFullWidth(m.playlistList, m.width/2)),
-	)
-
-	bottomRow := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		listStyle.Render(m.renderListWithFullWidth(m.artistList, m.width/2)),
-		listStyle.Render(m.renderListWithFullWidth(m.albumList, m.width/2)),
-	) */
-
 	return lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
 }
-
-// renderListWithFullWidth ensures the list takes full width even when empty
-/* func (m searchViewModel) renderListWithFullWidth(l list.Model, width int) string {
-	// Get the list's view
-	view := l.View()
-
-	// Check if the list is empty (contains "No items.")
-	if strings.Contains(view, "No items.") {
-		// Calculate the inner width (accounting for borders)
-		innerWidth := width - 4 // Subtract 4 for the left and right borders (2 each side)
-
-		// Create a style for the empty state that takes full width
-		emptyStyle := lipgloss.NewStyle().
-			Width(innerWidth).
-			Align(lipgloss.Left)
-
-		// Split the view to get the title and empty message
-		lines := strings.Split(view, "\n")
-
-		// If there's a title and empty message
-		if len(lines) >= 3 {
-			// Reconstruct the view with a full-width empty message
-			title := lines[0]
-			emptyLine := emptyStyle.Render("No items.")
-
-			// Calculate padding to fill the height
-			padding := ""
-			for i := 0; i < l.Height()-3; i++ {
-				padding += strings.Repeat(" ", innerWidth) + "\n"
-			}
-
-			return title + "\n" + emptyLine + "\n" + padding
-		}
-	}
-
-	return view
-} */
 
 // SetFocus sets the focus state of the search view
 func (m *searchViewModel) SetFocus(isFocused bool) {
@@ -207,10 +157,12 @@ func (m *searchViewModel) UpdateSearchResults() {
 
 	// Process playlist results
 	for _, playlist := range m.spotifyState.SearchResults.Playlists {
+
 		ownerName := ""
 		if playlist.Owner.DisplayName != "" {
 			ownerName = playlist.Owner.DisplayName
 		}
+
 		playlistItems = append(playlistItems, item{
 			title: playlist.Name,
 			desc:  ownerName,
@@ -243,16 +195,12 @@ func (m *searchViewModel) UpdateSearchResults() {
 		})
 	}
 
-	// Update the lists with the actual data
 	m.trackList.SetItems(trackItems)
 	m.playlistList.SetItems(playlistItems)
 	m.albumList.SetItems(albumItems)
 	m.artistList.SetItems(artistItems)
 }
 
-// Helper functions
-
-// createEmptyList creates a new empty list with the given title
 func createEmptyList(title string) list.Model {
 	delegate := list.NewDefaultDelegate()
 	l := list.New([]list.Item{}, delegate, 0, 0)
@@ -265,9 +213,7 @@ func createEmptyList(title string) list.Model {
 	return l
 }
 
-// updateListStyles updates the styles of all lists
 func (m *searchViewModel) updateListStyles(itemWidth int) {
-	// Create a delegate with the correct styles
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().

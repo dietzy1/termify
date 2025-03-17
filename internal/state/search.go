@@ -39,6 +39,14 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 		s.SearchResults.Tracks = results.Tracks.Tracks
 		s.SearchResults.Artists = results.Artists.Artists
 		s.SearchResults.Albums = results.Albums.Albums
+
+		// Filter out playlists that are null for some reason
+		for i := 0; i < len(results.Playlists.Playlists); i++ {
+			if results.Playlists.Playlists[i].Name == "" && results.Playlists.Playlists[i].ID == "" {
+				results.Playlists.Playlists = append(results.Playlists.Playlists[:i], results.Playlists.Playlists[i+1:]...)
+				i--
+			}
+		}
 		s.SearchResults.Playlists = results.Playlists.Playlists
 
 		log.Printf("SpotifyState: Found %d tracks", len(s.Tracks))
