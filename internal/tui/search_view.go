@@ -30,6 +30,9 @@ type searchViewModel struct {
 	playlistList list.Model
 	albumList    list.Model
 	artistList   list.Model
+
+	// Track which list is currently active
+	activeList FocusedModel
 }
 
 // NewSearchView creates a new search view
@@ -87,20 +90,37 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
-		// For now, we'll just forward to all lists
-		// TODO: We need to implement focus management for the 4 lists
+		// Handle key messages based on which list is active
 		var cmd tea.Cmd
-		m.trackList, cmd = m.trackList.Update(msg)
-		cmds = append(cmds, cmd)
 
-		m.playlistList, cmd = m.playlistList.Update(msg)
-		cmds = append(cmds, cmd)
+		// Update only the active list based on the current focus
+		switch m.activeList {
+		case FocusSearchTracksView:
+			m.trackList, cmd = m.trackList.Update(msg)
+			cmds = append(cmds, cmd)
+		case FocusSearchPlaylistsView:
+			m.playlistList, cmd = m.playlistList.Update(msg)
+			cmds = append(cmds, cmd)
+		case FocusSearchArtistsView:
+			m.artistList, cmd = m.artistList.Update(msg)
+			cmds = append(cmds, cmd)
+		case FocusSearchAlbumsView:
+			m.albumList, cmd = m.albumList.Update(msg)
+			cmds = append(cmds, cmd)
+		default:
+			// If no specific list is focused, update all lists
+			m.trackList, cmd = m.trackList.Update(msg)
+			cmds = append(cmds, cmd)
 
-		m.albumList, cmd = m.albumList.Update(msg)
-		cmds = append(cmds, cmd)
+			m.playlistList, cmd = m.playlistList.Update(msg)
+			cmds = append(cmds, cmd)
 
-		m.artistList, cmd = m.artistList.Update(msg)
-		cmds = append(cmds, cmd)
+			m.albumList, cmd = m.albumList.Update(msg)
+			cmds = append(cmds, cmd)
+
+			m.artistList, cmd = m.artistList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -108,23 +128,50 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the search view
 func (m searchViewModel) View() string {
-	// Style the lists
-	listStyle := lipgloss.NewStyle().
+	// Base style for all lists
+	baseStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(getBorderStyle(m.isFocused)).
+		BorderForeground(lipgloss.Color(BorderColor)).
 		Padding(0, 0)
 
-		// Render all lists
+	// Style for the focused list
+	focusedStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(PrimaryColor)).
+		Padding(0, 0)
+
+	// Determine which style to use for each list
+	tracksStyle := baseStyle
+	if m.activeList == FocusSearchTracksView {
+		tracksStyle = focusedStyle
+	}
+
+	playlistsStyle := baseStyle
+	if m.activeList == FocusSearchPlaylistsView {
+		playlistsStyle = focusedStyle
+	}
+
+	artistsStyle := baseStyle
+	if m.activeList == FocusSearchArtistsView {
+		artistsStyle = focusedStyle
+	}
+
+	albumsStyle := baseStyle
+	if m.activeList == FocusSearchAlbumsView {
+		albumsStyle = focusedStyle
+	}
+
+	// Render all lists with appropriate styles
 	topRow := lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		listStyle.Render(m.trackList.View()),
-		listStyle.Render(m.playlistList.View()),
+		tracksStyle.Render(m.trackList.View()),
+		playlistsStyle.Render(m.playlistList.View()),
 	)
 
 	bottomRow := lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		listStyle.Render(m.artistList.View()),
-		listStyle.Render(m.albumList.View()),
+		artistsStyle.Render(m.artistList.View()),
+		albumsStyle.Render(m.albumList.View()),
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
@@ -209,6 +256,10 @@ func createEmptyList(title string) list.Model {
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 	l.DisableQuitKeybindings()
+	l.Styles.Title = lipgloss.NewStyle().
+		Background(lipgloss.Color(BorderColor)).
+		Foreground(lipgloss.Color("#ffffff")).
+		Padding(0, 1)
 
 	return l
 }
@@ -248,4 +299,9 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 	m.playlistList.SetDelegate(delegate)
 	m.albumList.SetDelegate(delegate)
 	m.artistList.SetDelegate(delegate)
+}
+
+// SetActiveList sets which list is currently active based on the focused model
+func (m *searchViewModel) SetActiveList(focusedModel FocusedModel) {
+	m.activeList = focusedModel
 }
