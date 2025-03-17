@@ -77,17 +77,16 @@ func (m applicationModel) renderHelp() string {
 		// Find the longest key length for alignment
 		maxKeyLen := 0
 		for _, k := range bindings {
-			if len(k.Help().Key) > maxKeyLen {
-				maxKeyLen = len(k.Help().Key)
+			if lipgloss.Width(k.Help().Key) > maxKeyLen {
+				maxKeyLen = lipgloss.Width(k.Help().Key)
 			}
 		}
 
 		// Add each key binding to the section with proper alignment
 		for _, k := range bindings {
-			// Add extra padding for better visual spacing
 			keyText := keyStyle.Render(k.Help().Key)
-			// Pad with spaces to align all descriptions
-			padding := strings.Repeat(" ", maxKeyLen-len(k.Help().Key)+4)
+
+			padding := strings.Repeat(" ", maxKeyLen-lipgloss.Width((k.Help().Key))+4)
 			lines = append(lines, keyText+padding+descStyle.Render(k.Help().Desc))
 		}
 
