@@ -163,8 +163,14 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		m.searchBar.ExitSearchMode()
 		m.focusedModel = FocusLibrary
 		return m, nil, true
+	}
+
+	if m.searchBar.searching {
+		return m, cmd, false
+	}
 
 	//Playback controls globals
+	switch {
 	case key.Matches(msg, DefaultKeyMap.PlayPause):
 		if m.spotifyState.PlayerState.Playing {
 			return m, m.spotifyState.PausePlayback(), true
@@ -182,8 +188,8 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, m.spotifyState.IncreaseVolume(), true
 	case key.Matches(msg, DefaultKeyMap.VolumeDown):
 		return m, m.spotifyState.DecreaseVolume(), true
-	}
 
+	}
 	log.Println("Unhandled key:", msg)
 
 	return m, cmd, false

@@ -39,7 +39,7 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 	const itemWidth = 28
 
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(WhiteTextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
@@ -58,7 +58,7 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 		Width(itemWidth + 2)
 	l.Styles.Title = lipgloss.NewStyle().
 		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(lipgloss.Color(WhiteTextColor)).
 		Padding(0, 1)
 
 	l.SetShowStatusBar(false)
@@ -73,7 +73,7 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 }
 
 func (m libraryModel) Init() tea.Cmd {
-	return tea.WindowSize()
+	return nil
 }
 
 func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

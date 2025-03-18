@@ -46,7 +46,7 @@ func (m audioPlayerModel) songInfoView() string {
 	}
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(WhiteTextColor).
 		Bold(true).
 		Align(lipgloss.Left).
 		Width(28)

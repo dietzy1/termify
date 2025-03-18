@@ -257,7 +257,7 @@ func createEmptyList(title string) list.Model {
 	l.DisableQuitKeybindings()
 	l.Styles.Title = lipgloss.NewStyle().
 		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(WhiteTextColor).
 		Padding(0, 1)
 
 	return l
@@ -267,7 +267,7 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 	delegate := list.NewDefaultDelegate()
 
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(WhiteTextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth - 2).
 		MaxWidth(itemWidth - 2)

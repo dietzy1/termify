@@ -49,7 +49,7 @@ func NewDeviceSelector(spotifyState *state.SpotifyState) DeviceSelectorModel {
 	// Style the list elements
 
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFFFFF")).
+		Foreground(WhiteTextColor).
 		/* Padding(0, 0, 0, 2). */
 		Width(itemWidth)
 

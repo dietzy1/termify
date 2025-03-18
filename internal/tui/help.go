@@ -35,7 +35,7 @@ func (m applicationModel) renderHelp() string {
 		Bold(true)
 
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(WhiteTextColor).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().

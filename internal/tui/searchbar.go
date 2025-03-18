@@ -56,16 +56,6 @@ func (m searchbarModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// ToggleSearchMode toggles the search mode and returns appropriate commands
-func (m *searchbarModel) ToggleSearchMode() {
-	m.searching = !m.searching
-	if m.searching {
-		m.textInput.Focus()
-		return
-	}
-	m.textInput.Blur()
-}
-
 // EnterSearchMode enters search mode and returns appropriate commands
 func (m *searchbarModel) EnterSearchMode() {
 	if m.searching {

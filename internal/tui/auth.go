@@ -266,7 +266,7 @@ func (m model) viewAuth() string {
 		MarginBottom(1)
 
 	instructionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFFFFF")).
+		Foreground(WhiteTextColor).
 		Width(66). // Fixed width for instructions
 		MarginTop(1).
 		MarginBottom(1)

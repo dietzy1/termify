@@ -3,6 +3,7 @@ package tui
 import (
 	"log"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -41,16 +42,12 @@ func (m applicationModel) Init() tea.Cmd {
 	return tea.Batch(
 		tea.WindowSize(),
 		m.searchBar.Init(),
+		m.audioPlayer.Init(),
 		m.spotifyState.FetchPlaylists(),
 		m.spotifyState.FetchPlaybackState(),
 		/* 		m.spotifyState.FetchDevices(), */
-		m.audioPlayer.Init(),
 	)
 }
-
-// When we go to search and we press enter then we submit the search and we refocus to the searchView
-// When we go to search and we press escape then we exit search mode and refocus to the previous view
-// When we go to search and we press / then we exit search mode and refocus to the previous view
 
 func newApplication(client *spotify.Client) applicationModel {
 	spotifyState := state.NewSpotifyState(client)
@@ -78,6 +75,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case debouncedSearch:
 		if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
 			m.searchBar = updatedSearchBar
@@ -116,6 +114,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchView = updatedSearchView
 			cmds = append(cmds, cmd)
 		}
+
 		return m, tea.Batch(cmds...)
 
 	case state.PlaylistSelectedMsg:
@@ -147,7 +146,16 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.audioPlayer = updatedAudioPlayer
 			cmds = append(cmds, cmd)
 		}
+	case cursor.BlinkMsg:
+		if m.focusedModel != FocusSearchBar {
+			return m, nil
+		}
+		if searchbarModel, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
+			m.searchBar = searchbarModel
+			cmds = append(cmds, cmd)
+		}
 	}
+
 	return m, tea.Batch(cmds...)
 }
 
