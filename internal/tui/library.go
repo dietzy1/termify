@@ -50,21 +50,6 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
-	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(PrimaryColor)).
-		Foreground(lipgloss.Color(PrimaryColor)).
-		Padding(0, 0, 0, 1).
-		Bold(true).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
 	// Initialize empty list with fixed width
 	l := list.New([]list.Item{}, delegate, itemWidth+2, 0) // +2 for borders
 	l.Title = "Your Library"
@@ -127,11 +112,52 @@ func (m libraryModel) View() string {
 		return fmt.Sprintf("Error loading playlists: %v", m.err)
 	}
 
+	// Update delegate styles based on focus
+	delegate := list.NewDefaultDelegate()
+	const itemWidth = 28
+
+	delegate.Styles.NormalTitle = lipgloss.NewStyle().
+		Foreground(WhiteTextColor).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
+		Foreground(lipgloss.Color(TextColor)).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	selectedTitleColor := WhiteTextColor
+	if m.isFocused {
+		selectedTitleColor = PrimaryColor
+	}
+	selectedDescColor := TextColor
+	if m.isFocused {
+		selectedDescColor = PrimaryColor
+	}
+
+	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(lipgloss.Color(selectedTitleColor)).
+		Foreground(lipgloss.Color(selectedTitleColor)).
+		Padding(0, 0, 0, 1).
+		Bold(true).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(selectedDescColor)).
+		Padding(0, 0, 0, 2).
+		Width(itemWidth).
+		MaxWidth(itemWidth)
+
+	m.list.SetDelegate(delegate)
+
 	return lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(getBorderStyle(m.isFocused)).
 		Render(m.list.View())
-
 }
 
 func (m libraryModel) convertPlaylistsToItems() []list.Item {
