@@ -21,15 +21,6 @@ const (
 	FocusSearchAlbumsView
 )
 
-//How we want focus to work:
-// Tab key cycles focus between main components:
-// - Library <-> PlaylistView/SearchView (depending on search state)
-// - Press / to enter search mode and focus the SearchBar
-// - In SearchBar, press Enter to submit search and focus SearchView
-// - In SearchBar, press Esc to exit search mode and return to previous focus
-// - In SearchBar, press Up/Down to move focus to the view below (PlaylistView or SearchView)
-// - Shift+Tab reverses the tab order
-
 func (m applicationModel) isSearchViewFocus() bool {
 	return m.focusedModel == FocusSearchTracksView ||
 		m.focusedModel == FocusSearchPlaylistsView ||
@@ -37,9 +28,8 @@ func (m applicationModel) isSearchViewFocus() bool {
 		m.focusedModel == FocusSearchAlbumsView
 }
 
-// getDefaultSearchView returns the default search view to focus
 func (m *applicationModel) getDefaultSearchView() FocusedModel {
-	return FocusSearchTracksView // Default to tracks view
+	return FocusSearchTracksView
 }
 
 // cycleSearchViews cycles through the search views
@@ -150,19 +140,16 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		// Toggle search mode
 		if m.searchBar.searching {
 			if m.isSearchViewFocus() {
-				m.focusedModel = FocusSearchBar
-				m.searchBar.EnterSearchMode()
-				return m, nil, true
+				return m, NavigateToSearch(), true
 			}
 		} else {
-			m.focusedModel = FocusSearchBar
-			m.searchBar.EnterSearchMode()
-			return m, nil, true
+			return m, NavigateToSearch(), true
 		}
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		m.focusedModel = FocusLibrary
-		return m, nil, true
+		return m, NavigateToLibrary(), true
+	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
+		return m, NavigateToLibrary(), true
 	}
 
 	if m.searchBar.searching {

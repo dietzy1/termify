@@ -83,6 +83,28 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
+	case NavigationMsg:
+		m.focusedModel = msg.Target
+
+		// If this navigation requires exiting search mode
+		if msg.ExitSearch {
+			m.searchBar.searching = false
+			m.searchBar.textInput.Blur()
+			m.searchBar.textInput.SetValue("")
+		}
+
+		// If we're navigating to the search bar, put it in search mode
+		if msg.Target == FocusSearchBar {
+			m.searchBar.EnterSearchMode()
+		}
+
+		// If a playlist ID is provided, fetch its tracks
+		if msg.PlaylistID != "" {
+			cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
+		}
+
+		return m, tea.Batch(cmds...)
+
 	case state.PlayerStateUpdatedMsg:
 		if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, msg, m.playbackControl); ok {
 			m.playbackControl = updatedPlaybackControl

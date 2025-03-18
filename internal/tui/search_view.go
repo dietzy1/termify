@@ -3,6 +3,7 @@ package tui
 import (
 	"log"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -97,29 +98,66 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case FocusSearchTracksView:
 			m.trackList, cmd = m.trackList.Update(msg)
 			cmds = append(cmds, cmd)
+			// If the user presses enter, play the selected track
+			if key.Matches(msg, DefaultKeyMap.Select) {
+				if len(m.trackList.Items()) > 0 {
+					index := m.trackList.Index()
+					id := m.spotifyState.SearchResults.Tracks[index].ID
+					// Play the track and remain on the current view
+					return m, tea.Batch(
+						m.spotifyState.PlayTrack(id),
+						// Stay in search view with current focus
+						NavigateCmd(FocusSearchTracksView, false, ""),
+					)
+				}
+			}
+			if key.Matches(msg, DefaultKeyMap.AddToQueue) {
+				log.Println("Adding track to queue")
+			}
+
 		case FocusSearchPlaylistsView:
 			m.playlistList, cmd = m.playlistList.Update(msg)
 			cmds = append(cmds, cmd)
+			// If they press select then we need to open the table view for the selected playlist
+			if key.Matches(msg, DefaultKeyMap.Select) {
+				if len(m.playlistList.Items()) > 0 {
+					index := m.playlistList.Index()
+					playlistID := string(m.spotifyState.SearchResults.Playlists[index].ID)
+					log.Println("Opening playlist view for: ", playlistID)
+					// Use helper function for cleaner code
+					return m, NavigateToPlaylistView(playlistID)
+				}
+			}
+
 		case FocusSearchArtistsView:
 			m.artistList, cmd = m.artistList.Update(msg)
 			cmds = append(cmds, cmd)
+			// If user selects an artist, navigate to view their tracks/albums
+			if key.Matches(msg, DefaultKeyMap.Select) {
+				if len(m.artistList.Items()) > 0 {
+					index := m.artistList.Index()
+					artistID := string(m.spotifyState.SearchResults.Artists[index].ID)
+					log.Println("Opening artist view for: ", artistID)
+					// Use helper function
+					return m, NavigateToPlaylistView(artistID)
+				}
+			}
+
 		case FocusSearchAlbumsView:
 			m.albumList, cmd = m.albumList.Update(msg)
 			cmds = append(cmds, cmd)
-		default:
-			// If no specific list is focused, update all lists
-			m.trackList, cmd = m.trackList.Update(msg)
-			cmds = append(cmds, cmd)
-
-			m.playlistList, cmd = m.playlistList.Update(msg)
-			cmds = append(cmds, cmd)
-
-			m.albumList, cmd = m.albumList.Update(msg)
-			cmds = append(cmds, cmd)
-
-			m.artistList, cmd = m.artistList.Update(msg)
-			cmds = append(cmds, cmd)
+			// If user selects an album, navigate to view its tracks
+			if key.Matches(msg, DefaultKeyMap.Select) {
+				if len(m.albumList.Items()) > 0 {
+					index := m.albumList.Index()
+					albumID := string(m.spotifyState.SearchResults.Albums[index].ID)
+					log.Println("Opening album view for: ", albumID)
+					// Use helper function
+					return m, NavigateToPlaylistView(albumID)
+				}
+			}
 		}
+
 	}
 
 	return m, tea.Batch(cmds...)
