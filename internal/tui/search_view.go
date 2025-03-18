@@ -92,7 +92,6 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle key messages based on which list is active
 		var cmd tea.Cmd
-
 		// Update only the active list based on the current focus
 		switch m.activeList {
 		case FocusSearchTracksView:
@@ -279,29 +278,63 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 		Width(itemWidth - 2).
 		MaxWidth(itemWidth - 2)
 
-	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(PrimaryColor)).
-		Foreground(lipgloss.Color(PrimaryColor)).
-		Padding(0, 0, 0, 1).
-		Bold(true).
-		Width(itemWidth - 2).
-		MaxWidth(itemWidth - 2)
+	// Create a function to get the appropriate selected style based on focus
+	getSelectedStyle := func(isFocused bool) lipgloss.Style {
+		selectedColor := TextColor
+		if isFocused {
+			selectedColor = PrimaryColor
+		}
 
-	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth - 2).
-		MaxWidth(itemWidth - 2)
+		return lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, false, false, true).
+			BorderForeground(lipgloss.Color(selectedColor)).
+			Foreground(lipgloss.Color(selectedColor)).
+			Padding(0, 0, 0, 1).
+			Bold(true).
+			Width(itemWidth - 2).
+			MaxWidth(itemWidth - 2)
+	}
+
+	// Create a function to get the appropriate selected description style based on focus
+	getSelectedDescStyle := func(isFocused bool) lipgloss.Style {
+		selectedColor := TextColor
+		if isFocused {
+			selectedColor = PrimaryColor
+		}
+
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(selectedColor)).
+			Padding(0, 0, 0, 2).
+			Width(itemWidth - 2).
+			MaxWidth(itemWidth - 2)
+	}
+
+	// Create delegates for each list with appropriate focus state
+	trackDelegate := list.NewDefaultDelegate()
+	trackDelegate.Styles.SelectedTitle = getSelectedStyle(m.activeList == FocusSearchTracksView)
+	trackDelegate.Styles.SelectedDesc = getSelectedDescStyle(m.activeList == FocusSearchTracksView)
+
+	playlistDelegate := list.NewDefaultDelegate()
+	playlistDelegate.Styles.SelectedTitle = getSelectedStyle(m.activeList == FocusSearchPlaylistsView)
+	playlistDelegate.Styles.SelectedDesc = getSelectedDescStyle(m.activeList == FocusSearchPlaylistsView)
+
+	artistDelegate := list.NewDefaultDelegate()
+	artistDelegate.Styles.SelectedTitle = getSelectedStyle(m.activeList == FocusSearchArtistsView)
+	artistDelegate.Styles.SelectedDesc = getSelectedDescStyle(m.activeList == FocusSearchArtistsView)
+
+	albumDelegate := list.NewDefaultDelegate()
+	albumDelegate.Styles.SelectedTitle = getSelectedStyle(m.activeList == FocusSearchAlbumsView)
+	albumDelegate.Styles.SelectedDesc = getSelectedDescStyle(m.activeList == FocusSearchAlbumsView)
 
 	// Update the delegates for all lists
-	m.trackList.SetDelegate(delegate)
-	m.playlistList.SetDelegate(delegate)
-	m.albumList.SetDelegate(delegate)
-	m.artistList.SetDelegate(delegate)
+	m.trackList.SetDelegate(trackDelegate)
+	m.playlistList.SetDelegate(playlistDelegate)
+	m.albumList.SetDelegate(albumDelegate)
+	m.artistList.SetDelegate(artistDelegate)
 }
 
 // SetActiveList sets which list is currently active based on the focused model
 func (m *searchViewModel) SetActiveList(focusedModel FocusedModel) {
 	m.activeList = focusedModel
+	m.updateListStyles(m.width / 2)
 }
