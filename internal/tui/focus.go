@@ -2,6 +2,7 @@ package tui
 
 import (
 	"log"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -134,6 +135,15 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, nil, false
 	}
 
+	// Check if there's an error displayed and we pressed Escape
+	if (m.errorBar.title != "" || m.errorBar.message != "") && key.Matches(msg, DefaultKeyMap.Return) {
+		// Clear the error message
+		m.errorBar.title = ""
+		m.errorBar.message = ""
+		m.errorDisplayTimer = time.Time{}
+		return m, tea.WindowSize(), true
+	}
+
 	// Handle other global keys
 	switch {
 	case key.Matches(msg, DefaultKeyMap.Search):
@@ -175,7 +185,9 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, m.spotifyState.IncreaseVolume(), true
 	case key.Matches(msg, DefaultKeyMap.VolumeDown):
 		return m, m.spotifyState.DecreaseVolume(), true
-
+	// Example key binding to show an error message (for testing)
+	case msg.Type == tea.KeyRunes && string(msg.Runes) == "e":
+		return m, ShowError("Example Error", "This is an example error message. Press Esc to dismiss or wait 5 seconds."), true
 	}
 	log.Println("Unhandled key:", msg)
 

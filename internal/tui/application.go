@@ -2,6 +2,7 @@ package tui
 
 import (
 	"log"
+	"time"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
@@ -17,6 +18,15 @@ type errorMsg struct {
 	message string
 }
 
+// ShowErrorMsg is a message type to show an error to the user
+type ShowErrorMsg struct {
+	Title   string
+	Message string
+}
+
+// ErrorTimerExpiredMsg is sent when an error's display time has expired
+type ErrorTimerExpiredMsg struct{}
+
 type applicationModel struct {
 	width, height int
 
@@ -24,9 +34,10 @@ type applicationModel struct {
 
 	focusedModel FocusedModel
 
-	errorBar errorMsg
-	navbar   navbarModel
-	library  libraryModel
+	errorBar          errorMsg
+	errorDisplayTimer time.Time // Tracks when the error should be hidden
+	navbar            navbarModel
+	library           libraryModel
 
 	searchBar       searchbarModel
 	playlistView    playlistViewModel
@@ -45,7 +56,8 @@ func (m applicationModel) Init() tea.Cmd {
 		m.audioPlayer.Init(),
 		m.spotifyState.FetchPlaylists(),
 		m.spotifyState.FetchPlaybackState(),
-		/* 		m.spotifyState.FetchDevices(), */
+		m.spotifyState.FetchQueue(),
+		m.spotifyState.FetchDevices(),
 	)
 }
 
@@ -54,20 +66,18 @@ func newApplication(client *spotify.Client) applicationModel {
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
 	return applicationModel{
-		spotifyState:    spotifyState,
-		focusedModel:    FocusLibrary,
-		navbar:          newNavbar(spotifyState),
-		library:         newLibrary(spotifyState),
-		searchBar:       newSearchbar(spotifyState),
-		playlistView:    NewPlaylistView(spotifyState),
-		searchView:      NewSearchView(spotifyState),
-		playbackControl: newPlaybackControlsModel(spotifyState),
-		audioPlayer:     newAudioPlayer(spotifyState),
-		errorBar:        errorMsg{
-			/* 	title:   "hello",
-			message: "world", */
-		},
-		showHelp: false,
+		spotifyState:      spotifyState,
+		focusedModel:      FocusLibrary,
+		navbar:            newNavbar(spotifyState),
+		library:           newLibrary(spotifyState),
+		searchBar:         newSearchbar(spotifyState),
+		playlistView:      NewPlaylistView(spotifyState),
+		searchView:        NewSearchView(spotifyState),
+		playbackControl:   newPlaybackControlsModel(spotifyState),
+		audioPlayer:       newAudioPlayer(spotifyState),
+		errorBar:          errorMsg{},
+		errorDisplayTimer: time.Time{}, // Zero time (indicates no active timer)
+		showHelp:          false,
 	}
 }
 
@@ -75,6 +85,24 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
+	case ShowErrorMsg:
+		m.errorBar.title = msg.Title
+		m.errorBar.message = msg.Message
+		m.errorDisplayTimer = time.Now().Add(5 * time.Second)
+		return m, tea.Batch(
+			tea.WindowSize(),
+			tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
+				return ErrorTimerExpiredMsg{}
+			}),
+		)
+	case ErrorTimerExpiredMsg:
+		if !m.errorDisplayTimer.IsZero() && time.Now().After(m.errorDisplayTimer) {
+			m.errorBar.title = ""
+			m.errorBar.message = ""
+			m.errorDisplayTimer = time.Time{}
+		}
+		return m, tea.WindowSize()
 
 	case debouncedSearch:
 		if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
@@ -231,7 +259,6 @@ func (m applicationModel) View() string {
 				viewport)),
 		playbackSection,
 		navigationHelp,
-		/* "\r", */
 	)
 }
 
@@ -361,6 +388,14 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	return m, tea.Batch(cmds...)
 }
 
+func (m applicationModel) renderActionFeedback(action string) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888")).
+		Align(lipgloss.Center).
+		Width(m.width).
+		Render(action)
+}
+
 // renderNavigationHelp shows a simple help message for navigation
 func (m applicationModel) renderNavigationHelp() string {
 	var focusName string
@@ -387,7 +422,7 @@ func (m applicationModel) renderNavigationHelp() string {
 		helpText = "Tab: Cycle search views | /: Search"
 	case FocusSearchBar:
 		focusName = "Search"
-		helpText = "Enter: Submit search | Esc: Exit search | ↑/↓: Navigate to content"
+		helpText = "Esc: Exit search | tab: Navigate to content"
 	}
 
 	helpStyle := lipgloss.NewStyle().
@@ -396,4 +431,14 @@ func (m applicationModel) renderNavigationHelp() string {
 		Width(m.width)
 
 	return helpStyle.Render("Focus: " + focusName + " | " + helpText)
+}
+
+// ShowError creates a command to show an error message
+func ShowError(title, message string) tea.Cmd {
+	return func() tea.Msg {
+		return ShowErrorMsg{
+			Title:   title,
+			Message: message,
+		}
+	}
 }

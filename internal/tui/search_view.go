@@ -87,6 +87,10 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Update the search results in the view
 			m.UpdateSearchResults()
 		} else {
+			ShowError(
+				"Error loading search results",
+				msg.Err.Error(),
+			)
 			log.Printf("Search view received error in search results: %v", msg.Err)
 		}
 
@@ -112,7 +116,11 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if key.Matches(msg, DefaultKeyMap.AddToQueue) {
-				log.Println("Adding track to queue")
+				if len(m.trackList.Items()) > 0 {
+					index := m.trackList.Index()
+					id := m.spotifyState.SearchResults.Tracks[index].ID
+					return m, m.spotifyState.AddToQueue(id)
+				}
 			}
 
 		case FocusSearchPlaylistsView:

@@ -44,13 +44,6 @@ func (m navbarModel) View() string {
 		Foreground(lipgloss.Color(PrimaryColor)).
 		Bold(true)
 
-	escText := lipgloss.JoinHorizontal(lipgloss.Left,
-		keyStyle.Render("esc "),
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			Render("Back"),
-	)
-
 	helpText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("? "),
 		lipgloss.NewStyle().
@@ -58,12 +51,12 @@ func (m navbarModel) View() string {
 			Render("Help"),
 	)
 
-	/* devicesText := lipgloss.JoinHorizontal(lipgloss.Left,
+	devicesText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("d "),
 		lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
 			Render("Devices"),
-	) */
+	)
 
 	/* settings := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("s "),
@@ -73,10 +66,9 @@ func (m navbarModel) View() string {
 	) */
 
 	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
-		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(escText),
 		/* settings, */
+		lipgloss.NewStyle().MarginTop(2).PaddingRight(2).PaddingLeft(2).Render(devicesText),
 		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(helpText),
-		/* lipgloss.NewStyle().MarginTop(2).PaddingRight(2).PaddingLeft(2).Render(devicesText+m.deviceSelector.View()), */
 	)
 
 	leftSection := lipgloss.NewStyle().
@@ -96,3 +88,7 @@ func (m navbarModel) View() string {
 			),
 		)
 }
+
+//Settings view what can we show:
+// - Change the active device (if there are multiple devices)
+// - See the application ID

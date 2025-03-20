@@ -32,6 +32,7 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Println("Playback controls recieved player state update")
 		if msg.Err != nil {
 			log.Println("Error updating player state")
+			ShowError("Error updating player state", "Illegal action")
 			return m, nil
 		}
 		return m, nil

@@ -52,6 +52,7 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case state.TracksUpdatedMsg:
 		if msg.Err != nil {
+			ShowError("Error loading tracks", msg.Err.Error())
 			log.Printf("PlaylistView: Error loading tracks: %v", msg.Err)
 			return m, nil
 		}
@@ -79,7 +80,21 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+
 			return m, nil
+
+		case key.Matches(msg, DefaultKeyMap.AddToQueue):
+			if selected := m.table.HighlightedRow(); selected.Data != nil {
+				if numStr, ok := selected.Data["#"].(string); ok {
+					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
+						track := m.spotifyState.Tracks[idx-1]
+						if track.Track.Track != nil {
+							log.Printf("PlaylistView: Adding track to queue: %s", track.Track.Track.ID)
+							return m, m.spotifyState.AddToQueue(track.Track.Track.ID)
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -96,6 +111,36 @@ func (m playlistViewModel) View() string {
 				BorderForeground(getBorderStyle(m.isFocused)))
 	m.table = m.table.WithBaseStyle(
 		lipgloss.NewStyle().BorderForeground(getBorderStyle(m.isFocused)),
+	)
+
+	currentPage := m.table.CurrentPage()
+	maxPage := m.table.MaxPages()
+
+	// loop through m.spotifyState.Playlists to find the selected playlist
+	// then get the name of the selected playlist
+	// then render the name of the selected playlist in the footer
+
+	//TODO: this doesn't support the case where the selected playlist is not in the list of playlists and we are searching instead
+	name := "Unknown Playlist"
+	for _, playlist := range m.spotifyState.Playlists {
+		if playlist.ID == spotify.ID(m.spotifyState.SelectedPlaylistID) {
+			name = playlist.Name
+			break
+		}
+	}
+
+	styledName := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(TextColor)).
+		Padding(0, 1).
+		Render(name)
+
+	styledPage := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(WhiteTextColor)).
+		Padding(0, 1).
+		Render(fmt.Sprintf("| Page %d/%d", currentPage, maxPage))
+
+	m.table = m.table.WithStaticFooter(
+		styledName + styledPage,
 	)
 
 	return m.table.View()

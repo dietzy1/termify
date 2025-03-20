@@ -25,10 +25,8 @@ func (p playlist) Description() string { return p.desc }
 func (p playlist) FilterValue() string { return p.title }
 
 type libraryModel struct {
-	height int
-	list   list.Model
-	err    error
-
+	height       int
+	list         list.Model
 	spotifyState *state.SpotifyState
 	isFocused    bool
 }
@@ -87,7 +85,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case state.PlaylistsUpdatedMsg:
 		if msg.Err != nil {
-			m.err = msg.Err
+			ShowError("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
 			return m, nil
 		}
@@ -108,10 +106,6 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m libraryModel) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("Error loading playlists: %v", m.err)
-	}
-
 	// Update delegate styles based on focus
 	delegate := list.NewDefaultDelegate()
 	const itemWidth = 28
