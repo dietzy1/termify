@@ -12,7 +12,7 @@ import (
 
 var _ tea.Model = (*searchbarModel)(nil)
 
-const debounceTime = time.Second
+const debounceTime = time.Millisecond * 300
 
 type debouncedSearch struct {
 	searchTerm string
