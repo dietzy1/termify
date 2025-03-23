@@ -92,7 +92,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorDisplayTimer = time.Now().Add(5 * time.Second)
 		return m, tea.Batch(
 			tea.WindowSize(),
-			tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
+			tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
 				return ErrorTimerExpiredMsg{}
 			}),
 		)
@@ -127,8 +127,17 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// If a playlist ID is provided, fetch its tracks
-		if msg.PlaylistID != "" {
-			cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
+		if msg.selectedID != "" {
+			// Here we can switch on what kind of view we're navigating to
+
+			switch msg.viewport {
+			case playlistView:
+				cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.selectedID))
+			case artistTopTracksView:
+				cmds = append(cmds, m.spotifyState.FetchTopTracks(spotify.ID(msg.selectedID)))
+			case albumTracksView:
+				cmds = append(cmds, m.spotifyState.FetchAlbumTracks(msg.selectedID))
+			}
 		}
 
 		return m, tea.Batch(cmds...)
@@ -168,7 +177,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case state.PlaylistSelectedMsg:
-		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.PlaylistID))
+		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(spotify.ID(msg.PlaylistID)))
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
@@ -180,9 +189,11 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, DefaultKeyMap.CycleFocusForward):
-			m.cycleFocus()
+			cmd := m.cycleFocus()
+			return m, cmd
 		case key.Matches(msg, DefaultKeyMap.CycleFocusBackward):
-			m.cycleFocusBackward()
+			cmd := m.cycleFocusBackward()
+			return m, cmd
 		default:
 			return m.updateFocusedModel(msg)
 		}

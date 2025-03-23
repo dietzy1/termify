@@ -73,10 +73,8 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if numStr, ok := selected.Data["#"].(string); ok {
 					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
 						track := m.spotifyState.Tracks[idx-1]
-						if track.Track.Track != nil {
-							log.Printf("PlaylistView: Selected track: %s", track.Track.Track.ID)
-							return m, m.spotifyState.PlayTrack(track.Track.Track.ID)
-						}
+						log.Printf("PlaylistView: Selected track: %s", track.ID)
+						return m, m.spotifyState.PlayTrack(track.ID)
 					}
 				}
 			}
@@ -88,10 +86,8 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if numStr, ok := selected.Data["#"].(string); ok {
 					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
 						track := m.spotifyState.Tracks[idx-1]
-						if track.Track.Track != nil {
-							log.Printf("PlaylistView: Adding track to queue: %s", track.Track.Track.ID)
-							return m, m.spotifyState.AddToQueue(track.Track.Track.ID)
-						}
+						log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
+						return m, m.spotifyState.AddToQueue(track.ID)
 					}
 				}
 			}
@@ -116,16 +112,33 @@ func (m playlistViewModel) View() string {
 	currentPage := m.table.CurrentPage()
 	maxPage := m.table.MaxPages()
 
-	// loop through m.spotifyState.Playlists to find the selected playlist
-	// then get the name of the selected playlist
-	// then render the name of the selected playlist in the footer
-
 	//TODO: this doesn't support the case where the selected playlist is not in the list of playlists and we are searching instead
 	name := "Unknown Playlist"
 	for _, playlist := range m.spotifyState.Playlists {
-		if playlist.ID == spotify.ID(m.spotifyState.SelectedPlaylistID) {
+		if playlist.ID == spotify.ID(m.spotifyState.SelectedID) {
 			name = playlist.Name
 			break
+		}
+	}
+	//As fallback check searchResults for the selected playlist and brute force it
+	if name == "Unknown Playlist" {
+		for _, playlist := range m.spotifyState.SearchResults.Playlists {
+			if playlist.ID == spotify.ID(m.spotifyState.SelectedID) {
+				name = playlist.Name
+				break
+			}
+		}
+		for _, artist := range m.spotifyState.SearchResults.Artists {
+			if artist.ID == spotify.ID(m.spotifyState.SelectedID) {
+				name = artist.Name
+				break
+			}
+		}
+		for _, album := range m.spotifyState.SearchResults.Albums {
+			if album.ID == spotify.ID(m.spotifyState.SelectedID) {
+				name = album.Name
+				break
+			}
 		}
 	}
 
@@ -152,32 +165,27 @@ func (m *playlistViewModel) SetFocus(isFocused bool) {
 }
 
 // Update table with tracks
-func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.PlaylistItem) {
+func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) {
 	var rows []table.Row
 	for i, track := range tracks {
-		if track.Track.Track == nil {
-			log.Printf("PlaylistView: Warning - Track %d is nil", i+1)
-			continue
-		}
-
 		// Get primary artist name
 		artistName := "Unknown Artist"
-		if len(track.Track.Track.Artists) > 0 {
-			artistName = track.Track.Track.Artists[0].Name
+		if len(track.Artists) > 0 {
+			artistName = track.Artists[0].Name
 		}
 
 		// Get album name
 		albumName := "Unknown Album"
-		if track.Track.Track.Album.Name != "" {
-			albumName = track.Track.Track.Album.Name
+		if track.Album.Name != "" {
+			albumName = track.Album.Name
 		}
 
 		// Format duration
-		duration := formatTrackDuration(int(track.Track.Track.Duration))
+		duration := formatTrackDuration(int(track.Duration))
 
 		rows = append(rows, table.NewRow(table.RowData{
 			"#":        fmt.Sprintf("%d", i+1),
-			"title":    track.Track.Track.Name,
+			"title":    track.Name,
 			"artist":   artistName,
 			"album":    albumName,
 			"duration": duration,

@@ -111,7 +111,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Batch(
 						m.spotifyState.PlayTrack(id),
 						// Stay in search view with current focus
-						NavigateCmd(FocusSearchTracksView, false, ""),
+						NavigateCmd(FocusSearchTracksView, false, "", playlistView),
 					)
 				}
 			}
@@ -130,10 +130,14 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.playlistList.Items()) > 0 {
 					index := m.playlistList.Index()
-					playlistID := string(m.spotifyState.SearchResults.Playlists[index].ID)
+					playlistID := m.spotifyState.SearchResults.Playlists[index].ID
 					log.Println("Opening playlist view for: ", playlistID)
+					m.spotifyState.SelectedID = playlistID
+
+					//We somehow need to pass along that we opened a playlist called XX
+
 					// Use helper function for cleaner code
-					return m, NavigateToPlaylistView(playlistID)
+					return m, NavigateToPlaylistView(playlistID, playlistView)
 				}
 			}
 
@@ -144,10 +148,12 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.artistList.Items()) > 0 {
 					index := m.artistList.Index()
-					artistID := string(m.spotifyState.SearchResults.Artists[index].ID)
+					artistID := m.spotifyState.SearchResults.Artists[index].ID
 					log.Println("Opening artist view for: ", artistID)
+					m.spotifyState.SelectedID = artistID
+
 					// Use helper function
-					return m, NavigateToPlaylistView(artistID)
+					return m, NavigateToPlaylistView(artistID, artistTopTracksView)
 				}
 			}
 
@@ -158,10 +164,11 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.albumList.Items()) > 0 {
 					index := m.albumList.Index()
-					albumID := string(m.spotifyState.SearchResults.Albums[index].ID)
+					albumID := m.spotifyState.SearchResults.Albums[index].ID
 					log.Println("Opening album view for: ", albumID)
+					m.spotifyState.SelectedID = albumID
 					// Use helper function
-					return m, NavigateToPlaylistView(albumID)
+					return m, NavigateToPlaylistView(albumID, albumTracksView)
 				}
 			}
 		}

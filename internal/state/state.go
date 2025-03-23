@@ -22,10 +22,10 @@ type SpotifyState struct {
 
 	// Cache for current data
 	Playlists []spotify.SimplePlaylist
-	Tracks    []spotify.PlaylistItem
+	Tracks    []spotify.SimpleTrack
 
-	// Cache map for playlist items
-	playlistItemsCache map[string]*spotify.PlaylistItemPage
+	// Cache map for tracks by source ID (playlist, album, artist)
+	tracksCache map[spotify.ID][]spotify.SimpleTrack
 
 	SearchResults struct {
 		Tracks    []spotify.FullTrack
@@ -36,11 +36,9 @@ type SpotifyState struct {
 
 	// Queue of tracks to play
 	Queue []spotify.FullTrack
-	// Priority queue of tracks to play these are played before the rest of the queue
-	PriorityQueue []spotify.FullTrack
 
 	// Currently selected items
-	selectedPlaylistID string
+	SelectedID spotify.ID
 }
 
 type PlaylistsUpdatedMsg struct {
@@ -62,8 +60,8 @@ type PlayerStateUpdatedMsg struct {
 func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	log.Printf("Creating new SpotifyState with client: %v", client != nil)
 	return &SpotifyState{
-		client:             client,
-		playlistItemsCache: make(map[string]*spotify.PlaylistItemPage),
+		client:      client,
+		tracksCache: make(map[spotify.ID][]spotify.SimpleTrack),
 	}
 }
 

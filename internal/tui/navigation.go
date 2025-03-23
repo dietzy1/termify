@@ -1,36 +1,50 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/zmb3/spotify/v2"
+)
+
+type viewport int
+
+// Trackview can consit of playlistTracks, artist top tracks, album tracks
+const (
+	playlistView = iota
+	artistTopTracksView
+	albumTracksView
+)
 
 type NavigationMsg struct {
 	Target     FocusedModel
 	ExitSearch bool
-	PlaylistID string // Optional: playlist ID to load when navigating to playlist view
+	selectedID spotify.ID // Optional: playlist ID to load when navigating to playlist view
+	viewport   viewport
 }
 
-func NavigateCmd(target FocusedModel, exitSearch bool, playlistID string) tea.Cmd {
+func NavigateCmd(target FocusedModel, exitSearch bool, selectedID spotify.ID, vp viewport) tea.Cmd {
 	return func() tea.Msg {
 		return NavigationMsg{
 			Target:     target,
 			ExitSearch: exitSearch,
-			PlaylistID: playlistID,
+			selectedID: selectedID,
+			viewport:   vp,
 		}
 	}
 }
 
 // Helper functions for common navigation patterns
-func NavigateToPlaylistView(playlistID string) tea.Cmd {
-	return NavigateCmd(FocusPlaylistView, true, playlistID)
+func NavigateToPlaylistView(selectedID spotify.ID, vp viewport) tea.Cmd {
+	return NavigateCmd(FocusPlaylistView, true, selectedID, vp)
 }
 
 func NavigateToLibrary() tea.Cmd {
-	return NavigateCmd(FocusLibrary, false, "")
+	return NavigateCmd(FocusLibrary, false, "", playlistView)
 }
 
 func NavigateToSearch() tea.Cmd {
-	return NavigateCmd(FocusSearchBar, true, "")
+	return NavigateCmd(FocusSearchBar, true, "", playlistView)
 }
 
 func NavigateToSearchResults() tea.Cmd {
-	return NavigateCmd(FocusSearchTracksView, true, "")
+	return NavigateCmd(FocusSearchTracksView, true, "", playlistView)
 }

@@ -64,7 +64,10 @@ func (m *applicationModel) cycleSearchViewsBackward() {
 	}
 }
 
-func (m *applicationModel) cycleFocus() {
+// I think I lack a prober case of going from FocusPlaylistView to library when playlistView was redirected from search mode
+// A similar issue exists for pressing esc when in FocusPlaylistView
+
+func (m *applicationModel) cycleFocus() tea.Cmd {
 	switch m.focusedModel {
 	case FocusLibrary:
 		// From Library, go to either PlaylistView or SearchView depending on search state
@@ -76,6 +79,8 @@ func (m *applicationModel) cycleFocus() {
 	case FocusPlaylistView:
 		// From PlaylistView, go to Library
 		m.focusedModel = FocusLibrary
+		return m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri))
+
 	case FocusSearchTracksView, FocusSearchPlaylistsView, FocusSearchArtistsView, FocusSearchAlbumsView:
 		// If we're in a search view, cycle through the search views
 		m.cycleSearchViews()
@@ -87,9 +92,10 @@ func (m *applicationModel) cycleFocus() {
 			m.focusedModel = FocusPlaylistView
 		}
 	}
+	return nil
 }
 
-func (m *applicationModel) cycleFocusBackward() {
+func (m *applicationModel) cycleFocusBackward() tea.Cmd {
 	switch m.focusedModel {
 	case FocusLibrary:
 		// From Library, go to either PlaylistView or SearchView depending on search state
@@ -101,6 +107,7 @@ func (m *applicationModel) cycleFocusBackward() {
 	case FocusPlaylistView:
 		// From PlaylistView, go to Library
 		m.focusedModel = FocusLibrary
+		return m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri))
 	case FocusSearchTracksView, FocusSearchPlaylistsView, FocusSearchArtistsView, FocusSearchAlbumsView:
 		// If we're in a search view, cycle through the search views in reverse
 		m.cycleSearchViewsBackward()
@@ -108,6 +115,7 @@ func (m *applicationModel) cycleFocusBackward() {
 		// From SearchBar, go to Library (since it's at the top)
 		m.focusedModel = FocusLibrary
 	}
+	return nil
 }
 
 func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
@@ -150,7 +158,11 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, NavigateToLibrary(), true
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		return m, NavigateToLibrary(), true
+
+		return m, tea.Batch(
+			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
+			NavigateToLibrary(),
+		), true
 	}
 
 	if m.searchBar.searching {

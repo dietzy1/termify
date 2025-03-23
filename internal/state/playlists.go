@@ -38,7 +38,7 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 }
 
 // FetchPlaylistTracks retrieves all tracks for a given playlist and emits a state update
-func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
+func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Fetching tracks for playlist: %s", playlistID)
 		if playlistID == "" {
@@ -48,16 +48,16 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 			}
 		}
 
-		// Check cache first
-		if cachedItems, exists := s.playlistItemsCache[playlistID]; exists {
-			log.Printf("SpotifyState: Found cached items for playlist %s", playlistID)
-			s.Tracks = cachedItems.Items
+		if cachedTracks, exists := s.tracksCache[playlistID]; exists {
+			log.Printf("SpotifyState: Found cached tracks for playlist %s", playlistID)
+			// Use cached SimpleTracks directly
+			s.Tracks = cachedTracks
+			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for playlist %s", len(cachedTracks), playlistID)
 			return TracksUpdatedMsg{
 				Err: nil,
 			}
 		}
 
-		// If not in cache, fetch from API
 		log.Printf("SpotifyState: No cache found, fetching from API for playlist %s", playlistID)
 		playlistItems, err := s.client.GetPlaylistItems(context.TODO(), spotify.ID(playlistID))
 		if err != nil {
@@ -67,10 +67,35 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 			}
 		}
 
-		// Cache the results
-		s.playlistItemsCache[playlistID] = playlistItems
-		s.Tracks = playlistItems.Items
-		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for playlist %s", len(playlistItems.Items), playlistID)
+		allTracks := playlistItems.Items
+
+		for page := 1; ; page++ {
+			log.Printf("SpotifyState: Fetching page %d of playlist items", page)
+			err = s.client.NextPage(context.TODO(), playlistItems)
+			if err == spotify.ErrNoMorePages {
+				break
+			}
+			if err != nil {
+				log.Println("SpotifyState: Error fetching next page of playlist items:", err)
+				break
+			}
+
+			allTracks = append(allTracks, playlistItems.Items...)
+		}
+		log.Println("SpotifyState: Found", len(allTracks), "tracks")
+
+		simpleTracks := make([]spotify.SimpleTrack, 0, len(allTracks))
+		for _, item := range allTracks {
+			if item.Track.Track != nil {
+				//Manually map the album name because album for simple track is nil for some reason
+				item.Track.Track.SimpleTrack.Album.Name = item.Track.Track.Album.Name
+				simpleTracks = append(simpleTracks, item.Track.Track.SimpleTrack)
+			}
+		}
+
+		s.Tracks = simpleTracks
+		s.tracksCache[playlistID] = simpleTracks
+		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for playlist %s", len(simpleTracks), playlistID)
 
 		return TracksUpdatedMsg{
 			Err: nil,
@@ -81,7 +106,7 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID string) tea.Cmd {
 func (s *SpotifyState) SelectPlaylist(playlistID string) tea.Cmd {
 	return func() tea.Msg {
 		playlistID = strings.Split(playlistID, ":")[2]
-		s.selectedPlaylistID = playlistID
+		s.SelectedID = spotify.ID(playlistID)
 		return PlaylistSelectedMsg{
 			PlaylistID: playlistID,
 		}
