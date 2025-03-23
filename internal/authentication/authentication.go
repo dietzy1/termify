@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
@@ -95,6 +96,27 @@ func (s *SpotifyAuth) StartAuth(ctx context.Context, clientID string) chan AuthR
 		s.authComplete <- AuthResult{
 			Error: fmt.Errorf("failed to load token: %w", err),
 		}
+		return s.authComplete
+	}
+
+	// If token is expired send a request to refresh it
+	if token != nil && token.Expiry.Before(time.Now()) {
+		log.Printf("Token expired, refreshing")
+		token, err = s.auth.RefreshToken(ctx, token)
+		if err != nil {
+			log.Printf("Failed to refresh token: %v", err)
+			s.authComplete <- AuthResult{
+				Error: fmt.Errorf("failed to refresh token: %w", err),
+			}
+			return s.authComplete
+		}
+
+		client := spotify.New(s.auth.Client(ctx, token))
+		s.authComplete <- AuthResult{
+			Client: client,
+		}
+		close(s.authComplete)
+		log.Printf("Using refreshed credentials")
 		return s.authComplete
 	}
 
