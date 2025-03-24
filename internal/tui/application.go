@@ -104,6 +104,44 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.WindowSize()
 
+	case AutoplayNextTrackMsg:
+		// If the queue is not empty, Spotify will automatically play the next song
+		// If the queue is empty, we need to play the next track based on the current view
+
+		log.Println("Autoplaying next track", len(m.spotifyState.Queue))
+		for _, track := range m.spotifyState.Queue {
+			log.Println("Queue contains track:", track.Name)
+		}
+
+		if m.spotifyState.IsQueueEmpty() {
+
+			log.Println("Queue is empty, playing next track based on current view")
+
+			// Play the next track based on the current view
+			switch {
+			case m.focusedModel == FocusPlaylistView || m.focusedModel == FocusLibrary:
+				// PlaylistView handles both normal playlists and other track views (artist, album)
+				if nextTrack := m.playlistView.GetNextTrack(); nextTrack != "" {
+					log.Printf("Playing next track from playlist: %s", nextTrack)
+					return m, m.spotifyState.PlayTrack(nextTrack)
+				}
+
+			case m.isSearchViewFocus():
+				// Handle search view autoplay
+				if nextTrack := m.searchView.GetNextTrack(m.focusedModel); nextTrack != "" {
+					log.Printf("Playing next track from search: %s", nextTrack)
+					return m, m.spotifyState.PlayTrack(nextTrack)
+				}
+			}
+
+			// If we couldn't find a next track, fetch recommendations
+			log.Println("No next track found, fetching recommendations")
+			return m, m.spotifyState.FetchRecommendations()
+		}
+
+		// Just refresh playback state if queue is not empty
+		return m, m.spotifyState.FetchPlaybackState()
+
 	case debouncedSearch:
 		if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
 			m.searchBar = updatedSearchBar

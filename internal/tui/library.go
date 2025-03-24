@@ -85,9 +85,8 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case state.PlaylistsUpdatedMsg:
 		if msg.Err != nil {
-			ShowError("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
-			return m, nil
+			return m, ShowError("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
 		}
 		log.Printf("Application: Converting %d playlists to list items", len(m.spotifyState.Playlists))
 		m.list.SetItems(m.convertPlaylistsToItems())

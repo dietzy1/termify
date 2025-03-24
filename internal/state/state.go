@@ -41,6 +41,11 @@ type SpotifyState struct {
 	SelectedID spotify.ID
 }
 
+// IsQueueEmpty returns true if the queue is empty or nil
+func (s *SpotifyState) IsQueueEmpty() bool {
+	return s.Queue == nil || len(s.Queue) == 0
+}
+
 type PlaylistsUpdatedMsg struct {
 	Err error
 }

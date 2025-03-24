@@ -52,9 +52,9 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case state.TracksUpdatedMsg:
 		if msg.Err != nil {
-			ShowError("Error loading tracks", msg.Err.Error())
+
 			log.Printf("PlaylistView: Error loading tracks: %v", msg.Err)
-			return m, nil
+			return m, ShowError("Error loading tracks", msg.Err.Error())
 		}
 
 		log.Printf("PlaylistView: Converting %d tracks to table rows", len(m.spotifyState.Tracks))
@@ -220,4 +220,39 @@ func createPlaylistTable() table.Model {
 	).Border(
 		RoundedTableBorders,
 	)
+}
+
+// GetNextTrack returns the ID of the next track to play when autoplay is triggered
+// It returns the next track after the currently playing one, or the first track if none is playing
+func (m *playlistViewModel) GetNextTrack() spotify.ID {
+	if len(m.spotifyState.Tracks) == 0 {
+		log.Println("No tracks in playlist to autoplay")
+		return ""
+	}
+
+	// If no track is currently playing, return the first track
+	if m.spotifyState.PlayerState.Item == nil {
+		log.Println("No track currently playing, returning first track")
+		return spotify.ID(m.spotifyState.Tracks[0].ID)
+	}
+
+	currentTrackID := m.spotifyState.PlayerState.Item.ID
+
+	// Find the current track in the playlist
+	for i, track := range m.spotifyState.Tracks {
+		if string(track.ID) == string(currentTrackID) {
+			// If it's the last track, return empty (we'll use recommendations)
+			if i >= len(m.spotifyState.Tracks)-1 {
+				log.Println("Current track is the last one in playlist")
+				return ""
+			}
+			// Return the next track
+			log.Printf("Found current track at index %d, returning next track", i)
+			return spotify.ID(m.spotifyState.Tracks[i+1].ID)
+		}
+	}
+
+	// If current track not found in playlist, return the first track
+	log.Println("Current track not found in playlist, returning first track")
+	return spotify.ID(m.spotifyState.Tracks[0].ID)
 }

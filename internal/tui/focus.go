@@ -188,9 +188,6 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, m.spotifyState.IncreaseVolume(), true
 	case key.Matches(msg, DefaultKeyMap.VolumeDown):
 		return m, m.spotifyState.DecreaseVolume(), true
-	// Example key binding to show an error message (for testing)
-	case msg.Type == tea.KeyRunes && string(msg.Runes) == "e":
-		return m, ShowError("Example Error", "This is an example error message. Press Esc to dismiss or wait 5 seconds."), true
 	}
 	log.Println("Unhandled key:", msg)
 

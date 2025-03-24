@@ -50,6 +50,4 @@ func main() {
 		log.Printf("TUI error: %v", err)
 	}
 
-	// TUI has exited, trigger shutdown
-	cancel()
 }

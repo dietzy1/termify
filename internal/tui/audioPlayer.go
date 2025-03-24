@@ -13,6 +13,9 @@ import (
 
 var _ tea.Model = (*audioPlayerModel)(nil)
 
+// AutoplayNextTrackMsg is emitted when a song ends and we need to autoplay the next track
+type AutoplayNextTrackMsg struct{}
+
 type audioPlayerModel struct {
 	width int
 
@@ -134,13 +137,6 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	// When we select a playlist then we should add all the tracks to the queue
-	// When we select an artist we should add all their top tracks to the queue
-	// When we select an album we should add all the tracks to the queue
-	// When we select a track we should check recommendations and add them to the queue
-
-	// When playing music then we should always be playing from the queue first
-
 	case tickMsg:
 		if m.spotifyState.PlayerState.Playing {
 			m.progress++
@@ -148,13 +144,11 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.progress > int(m.spotifyState.PlayerState.Item.Duration/1000) {
 				m.progress = 0
 
-				//If queue contains items it will autoplay and it works like usual here
-
-				//If the queue isn't empty then we must based on our current view select a song to play
-
+				// Check queue and emit autoplay message when song ends
 				return m, tea.Batch(
+					m.spotifyState.FetchQueue(),
 					m.spotifyState.FetchPlaybackState(),
-
+					func() tea.Msg { return AutoplayNextTrackMsg{} },
 					tickCmd(),
 				)
 			}

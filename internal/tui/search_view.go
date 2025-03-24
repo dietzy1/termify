@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
+	"github.com/zmb3/spotify/v2"
 )
 
 // item implements list.Item interface for display in lists
@@ -87,11 +88,12 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Update the search results in the view
 			m.UpdateSearchResults()
 		} else {
-			ShowError(
+			log.Printf("Search view received error in search results: %v", msg.Err)
+			return m, ShowError(
 				"Error loading search results",
 				msg.Err.Error(),
 			)
-			log.Printf("Search view received error in search results: %v", msg.Err)
+
 		}
 
 	case tea.KeyMsg:
@@ -390,4 +392,60 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 func (m *searchViewModel) SetActiveList(focusedModel FocusedModel) {
 	m.activeList = focusedModel
 	m.updateListStyles(m.width / 2)
+}
+
+// GetNextTrack returns the ID of the next track to play in the active search view
+func (m *searchViewModel) GetNextTrack(focusedModel FocusedModel) spotify.ID {
+	// Check which list is active and get tracks from that list
+	switch focusedModel {
+	case FocusSearchTracksView:
+		return m.getNextTrackFromList(m.trackList, m.spotifyState.SearchResults.Tracks)
+	case FocusSearchArtistsView:
+		// For artists view, we would need to get the artist's top tracks
+		// For simplicity, just return empty and let recommendations handle it
+		return ""
+	case FocusSearchAlbumsView:
+		// For albums view, we would need to get the album's tracks
+		// For simplicity, just return empty and let recommendations handle it
+		return ""
+	case FocusSearchPlaylistsView:
+		// For playlists view, we would need to get the playlist's tracks
+		// For simplicity, just return empty and let recommendations handle it
+		return ""
+	}
+	return ""
+}
+
+// Helper method to get the next track from a list of tracks
+func (m *searchViewModel) getNextTrackFromList(listModel list.Model, tracks []spotify.FullTrack) spotify.ID {
+	if len(tracks) == 0 {
+		log.Println("No tracks in search results to autoplay")
+		return ""
+	}
+
+	// If no track is currently playing, return the first track
+	if m.spotifyState.PlayerState.Item == nil {
+		log.Println("No track currently playing, returning first track from search")
+		return tracks[0].ID
+	}
+
+	currentTrackID := m.spotifyState.PlayerState.Item.ID
+
+	// Find the current track in the search results
+	for i, track := range tracks {
+		if string(track.ID) == string(currentTrackID) {
+			// If it's the last track, return empty (we'll use recommendations)
+			if i >= len(tracks)-1 {
+				log.Println("Current track is the last one in search results")
+				return ""
+			}
+			// Return the next track
+			log.Printf("Found current track at index %d in search, returning next track", i)
+			return tracks[i+1].ID
+		}
+	}
+
+	// If current track not found in search results, return the first track
+	log.Println("Current track not found in search results, returning first track")
+	return tracks[0].ID
 }
