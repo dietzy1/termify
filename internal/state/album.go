@@ -19,9 +19,16 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 			}
 		}
 
-		if cachedTracks, exists := s.tracksCache[albumId]; exists {
+		s.mu.RLock()
+		cachedTracks, exists := s.tracksCache[albumId]
+		s.mu.RUnlock()
+
+		if exists {
 			log.Printf("SpotifyState: Found cached tracks for album %s", albumId)
+			s.mu.Lock()
 			s.Tracks = cachedTracks
+			s.mu.Unlock()
+
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for album %s", len(cachedTracks), albumId)
 			return TracksUpdatedMsg{
 				Err: nil,
@@ -58,8 +65,10 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 			simpleTracks = append(simpleTracks, item)
 		}
 
+		s.mu.Lock()
 		s.Tracks = simpleTracks
 		s.tracksCache[albumId] = simpleTracks
+		s.mu.Unlock()
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for album %s", len(allTracks), albumId)
 		return TracksUpdatedMsg{

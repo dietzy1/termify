@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,7 @@ import (
 // SpotifyState manages all Spotify-related state and API calls
 type SpotifyState struct {
 	client *spotify.Client
+	mu     sync.RWMutex
 
 	DeviceState []spotify.PlayerDevice
 	//Currently playing state
@@ -43,6 +45,8 @@ type SpotifyState struct {
 
 // IsQueueEmpty returns true if the queue is empty or nil
 func (s *SpotifyState) IsQueueEmpty() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.Queue == nil || len(s.Queue) == 0
 }
 
@@ -66,6 +70,7 @@ func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	log.Printf("Creating new SpotifyState with client: %v", client != nil)
 	return &SpotifyState{
 		client:      client,
+		mu:          sync.RWMutex{},
 		tracksCache: make(map[spotify.ID][]spotify.SimpleTrack),
 	}
 }
@@ -89,7 +94,9 @@ func (s *SpotifyState) NextTrack() tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
 
 		return PlayerStateUpdatedMsg{
 			Err: nil,
@@ -117,7 +124,9 @@ func (s *SpotifyState) PreviousTrack() tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
 
 		return PlayerStateUpdatedMsg{
 			Err: nil,
@@ -146,7 +155,10 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
+
 		return PlayerStateUpdatedMsg{
 			Err: nil,
 		}
@@ -155,7 +167,11 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 
 func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
 	return func() tea.Msg {
-		if err := s.client.Shuffle(context.TODO(), !s.PlayerState.ShuffleState); err != nil {
+		s.mu.RLock()
+		shuffleState := s.PlayerState.ShuffleState
+		s.mu.RUnlock()
+
+		if err := s.client.Shuffle(context.TODO(), !shuffleState); err != nil {
 			log.Printf("SpotifyState: Error toggling shuffle mode: %v", err)
 			return nil
 		}
@@ -172,7 +188,10 @@ func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
+
 		return PlayerStateUpdatedMsg{
 			Err: nil,
 		}
@@ -182,8 +201,12 @@ func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
 func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 	return func() tea.Msg {
 		// Determine new repeat state based on current state
+		s.mu.RLock()
+		currentRepeatState := s.PlayerState.RepeatState
+		s.mu.RUnlock()
+
 		var newState string
-		if s.PlayerState.RepeatState == "off" {
+		if currentRepeatState == "off" {
 			newState = "context"
 		} else {
 			newState = "off"
@@ -204,7 +227,11 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 		}
 
 		log.Println("SpotifyState: Player state:", state)
+
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
+
 		return PlayerStateUpdatedMsg{
 			Err: nil,
 		}
@@ -227,8 +254,11 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 		for _, device := range devices {
 			log.Printf("SpotifyState: Found device: %v", device.Name)
 		}
+
 		// This is unsafe and bad TODO: fix this later
+		s.mu.Lock()
 		s.DeviceState = devices
+		s.mu.Unlock()
 
 		err = s.client.TransferPlayback(
 			context.TODO(),

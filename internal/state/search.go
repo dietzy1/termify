@@ -36,10 +36,6 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 		log.Printf("SpotifyState: Found %d albums", len(results.Albums.Albums))
 		log.Printf("SpotifyState: Found %d playlists", len(results.Playlists.Playlists))
 
-		s.SearchResults.Tracks = results.Tracks.Tracks
-		s.SearchResults.Artists = results.Artists.Artists
-		s.SearchResults.Albums = results.Albums.Albums
-
 		// Filter out playlists that are null for some reason
 		for i := 0; i < len(results.Playlists.Playlists); i++ {
 			if results.Playlists.Playlists[i].Name == "" && results.Playlists.Playlists[i].ID == "" {
@@ -47,9 +43,18 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 				i--
 			}
 		}
+
+		s.mu.Lock()
+		s.SearchResults.Tracks = results.Tracks.Tracks
+		s.SearchResults.Artists = results.Artists.Artists
+		s.SearchResults.Albums = results.Albums.Albums
 		s.SearchResults.Playlists = results.Playlists.Playlists
 
-		log.Printf("SpotifyState: Found %d tracks", len(s.Tracks))
+		// Get a local snapshot of the Tracks length for logging
+		tracksLength := len(s.Tracks)
+		s.mu.Unlock()
+
+		log.Printf("SpotifyState: Found %d tracks", tracksLength)
 		return SearchResultsUpdatedMsg{
 			Err: nil,
 		}

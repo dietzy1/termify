@@ -67,6 +67,7 @@ func (m playbackControlsModel) View() string {
 	shuffleState := m.spotifyState.PlayerState.ShuffleState
 	repeatState := m.spotifyState.PlayerState.RepeatState
 
+	//TODO: This is a daterace we need to write a function which accesses these things using the mutex to fix
 	if m.spotifyState.PlayerState.Playing {
 		playPauseButton = "⏸"
 	}

@@ -20,7 +20,10 @@ func (s *SpotifyState) FetchPlaybackState() tea.Cmd {
 		}
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
+
 		return PlayerStateUpdatedMsg{
 			Err: nil,
 		}
@@ -46,7 +49,9 @@ func (s *SpotifyState) StartPlayback() tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
 
 		return PlayerStateUpdatedMsg{
 			Err: nil,
@@ -75,7 +80,9 @@ func (s *SpotifyState) PausePlayback() tea.Cmd {
 
 		log.Println("SpotifyState: Player state:", state)
 
+		s.mu.Lock()
 		s.PlayerState = *state
+		s.mu.Unlock()
 
 		return PlayerStateUpdatedMsg{
 			Err: nil,

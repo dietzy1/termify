@@ -200,6 +200,9 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, DefaultKeyMap.Quit):
+			return m, tea.Quit
+
 		case key.Matches(msg, DefaultKeyMap.Select):
 			if m.authModel.state == stateAwaitingClientID {
 				clientID := m.authModel.input.Value()
