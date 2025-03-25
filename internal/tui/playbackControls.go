@@ -102,7 +102,7 @@ func (m playbackControlsModel) View() string {
 		}
 
 		renderedButton := lipgloss.JoinVertical(lipgloss.Center,
-			lipgloss.NewStyle().Margin(0, 1).Render(btn),
+			lipgloss.NewStyle().Render(btn),
 			helperContent,
 		)
 		renderedButtons = append(renderedButtons, renderedButton)

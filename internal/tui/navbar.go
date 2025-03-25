@@ -3,7 +3,6 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/dietzy1/termify/internal/state"
 )
 
 // Dont format
@@ -13,18 +12,18 @@ const logo = ` ______              _ ___
 /_/  \__/_/ /_/_/_/_/_/ \_, / 
                        /___/  `
 
+const smallLogo = `Termify`
+
 var _ tea.Model = (*navbarModel)(nil)
 
-type navbarModel struct {
-	width int
+const SHRINKHEIGHT = 24
 
-	deviceSelector DeviceSelectorModel
+type navbarModel struct {
+	width, applicationHeight int
 }
 
-func newNavbar(spotifyState *state.SpotifyState) navbarModel {
-	return navbarModel{
-		deviceSelector: NewDeviceSelector(spotifyState),
-	}
+func newNavbar() navbarModel {
+	return navbarModel{}
 }
 
 func (m navbarModel) Init() tea.Cmd {
@@ -35,6 +34,7 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.applicationHeight = msg.Height
 	}
 	return m, nil
 }
@@ -58,23 +58,33 @@ func (m navbarModel) View() string {
 			Render("Devices"),
 	)
 
-	/* settings := lipgloss.JoinHorizontal(lipgloss.Left,
-		keyStyle.Render("s "),
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			Render("Settings"),
-	) */
+	var paddingTop = 0
+	if m.applicationHeight > SHRINKHEIGHT {
+		paddingTop = 2
+	}
 
 	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
-		/* settings, */
-		lipgloss.NewStyle().MarginTop(2).PaddingRight(2).PaddingLeft(2).Render(devicesText),
-		lipgloss.NewStyle().PaddingTop(2).PaddingRight(2).PaddingLeft(2).Render(helpText),
+		lipgloss.NewStyle().
+			PaddingTop(paddingTop).
+			PaddingRight(2).
+			PaddingLeft(2).
+			Render(devicesText),
+		lipgloss.NewStyle().
+			PaddingTop(paddingTop).
+			PaddingRight(2).
+			PaddingLeft(2).
+			Render(helpText),
 	)
 
 	leftSection := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
 		MarginLeft(1).
-		Render(logo)
+		Render(func() string {
+			if m.applicationHeight > SHRINKHEIGHT {
+				return logo
+			}
+			return smallLogo
+		}())
 
 	// Create a full-width container with left and right sections
 	return lipgloss.NewStyle().
@@ -88,7 +98,3 @@ func (m navbarModel) View() string {
 			),
 		)
 }
-
-//Settings view what can we show:
-// - Change the active device (if there are multiple devices)
-// - See the application ID

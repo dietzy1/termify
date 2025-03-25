@@ -52,7 +52,8 @@ func (m audioPlayerModel) songInfoView() string {
 		Foreground(WhiteTextColor).
 		Bold(true).
 		Align(lipgloss.Left).
-		Width(28)
+		Width(28).
+		MaxHeight(5)
 
 	artistStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
@@ -212,7 +213,8 @@ func (m audioPlayerModel) volumeControlView() string {
 	// Create a container with fixed width and left alignment
 	containerStyle := lipgloss.NewStyle().
 		Width(28).
-		Align(lipgloss.Right)
+		Align(lipgloss.Right).
+		MaxHeight(5)
 
 	if m.width < SHRINKWIDTH {
 		containerStyle = containerStyle.Width(20)

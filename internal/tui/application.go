@@ -68,7 +68,7 @@ func newApplication(client *spotify.Client) applicationModel {
 	return applicationModel{
 		spotifyState:      spotifyState,
 		focusedModel:      FocusLibrary,
-		navbar:            newNavbar(spotifyState),
+		navbar:            newNavbar(),
 		library:           newLibrary(spotifyState),
 		searchBar:         newSearchbar(spotifyState),
 		playlistView:      NewPlaylistView(spotifyState),
@@ -321,17 +321,20 @@ func (m applicationModel) renderPlaybackSection() string {
 	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
 
 	// Style for the playback section
-	combinedPlaybackSectionStyle := lipgloss.NewStyle().MaxWidth(m.width)
+	combinedPlaybackSectionStyle := lipgloss.NewStyle().
+		MaxWidth(m.width)
 
 	// Center both components individually
 	centeredPlaybackControls := lipgloss.NewStyle().
 		Width(availableWidth).
 		Align(lipgloss.Center).
+		MaxHeight(4).
 		Render(m.playbackControl.View())
 
 	centeredAudioPlayer := lipgloss.NewStyle().
 		Width(availableWidth).
 		Align(lipgloss.Center).
+		MaxHeight(1).
 		Render(m.audioPlayer.View())
 
 	// Join them vertically
@@ -385,7 +388,8 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	msg.Height -= lipgloss.Height(m.navbar.View()) + lipgloss.Height(m.playbackControl.View()) + lipgloss.Height(m.audioPlayer.View()) + 1 + errorHeight
 
 	if updatedNavbar, cmd, ok := updateSubmodel(m.navbar, tea.WindowSizeMsg{
-		Width: msg.Width,
+		Width:  msg.Width,
+		Height: m.height,
 	}, m.navbar); ok {
 		m.navbar = updatedNavbar
 		cmds = append(cmds, cmd)

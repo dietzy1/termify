@@ -40,14 +40,14 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-
+		const minTableHeight = 7
 		// This check is a panic safeguard
-		if m.height-7 < 0 {
+		if m.height-minTableHeight < 0 {
 			m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(1)
 			return m, nil
 		}
 
-		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 9)
+		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 6)
 		log.Printf("PlaylistView width: %d, height: %d", m.width, m.height)
 
 	case state.TracksUpdatedMsg:
@@ -113,9 +113,6 @@ func (m playlistViewModel) View() string {
 
 	currentPage := m.table.CurrentPage()
 	maxPage := m.table.MaxPages()
-
-	//TODO: this doesn't support the case where the selected playlist is not in the list of playlists and we are searching instead
-
 	playlists := m.spotifyState.GetPlaylists()
 	selectedId := m.spotifyState.GetSelectedID()
 
