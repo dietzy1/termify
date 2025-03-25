@@ -63,12 +63,14 @@ func (m playbackControlsModel) View() string {
 	nextButton := "⏭"
 	repeatButton := "↺"
 
+	playerState := m.spotifyState.GetPlayerState()
+
 	// Get current states (changed from string comparison to boolean)
-	shuffleState := m.spotifyState.PlayerState.ShuffleState
-	repeatState := m.spotifyState.PlayerState.RepeatState
+	shuffleState := playerState.ShuffleState
+	repeatState := playerState.RepeatState
 
 	//TODO: This is a daterace we need to write a function which accesses these things using the mutex to fix
-	if m.spotifyState.PlayerState.Playing {
+	if playerState.Playing {
 		playPauseButton = "⏸"
 	}
 
@@ -88,12 +90,12 @@ func (m playbackControlsModel) View() string {
 	for i, button := range buttons {
 		helperContent := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
-			Align(lipgloss.Center).Foreground(lipgloss.Color(TextColor)).
+			Align(lipgloss.Center).Foreground(lipgloss.Color(TextColor)).MaxHeight(1).
 			Render(keybindTexts[i])
 
 		var btn string
 		switch {
-		case (i == 0 && shuffleState) || (i == 4 && repeatState == "context") || (i == 2 && m.spotifyState.PlayerState.Playing):
+		case (i == 0 && shuffleState) || (i == 4 && repeatState == "context") || (i == 2 && playerState.Playing):
 			btn = activeStyle.Render(button)
 		default:
 			btn = baseStyle.Render(button)

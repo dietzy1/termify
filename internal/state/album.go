@@ -26,7 +26,7 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 		if exists {
 			log.Printf("SpotifyState: Found cached tracks for album %s", albumId)
 			s.mu.Lock()
-			s.Tracks = cachedTracks
+			s.tracks = cachedTracks
 			s.mu.Unlock()
 
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for album %s", len(cachedTracks), albumId)
@@ -66,7 +66,7 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 		}
 
 		s.mu.Lock()
-		s.Tracks = simpleTracks
+		s.tracks = simpleTracks
 		s.tracksCache[albumId] = simpleTracks
 		s.mu.Unlock()
 

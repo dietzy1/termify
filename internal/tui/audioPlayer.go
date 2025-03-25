@@ -36,16 +36,16 @@ func newAudioPlayer(spotifyState *state.SpotifyState) audioPlayerModel {
 }
 
 func (m audioPlayerModel) songInfoView() string {
+	playerState := m.spotifyState.GetPlayerState()
+
 	var songTitle string = "Unknown Song"
-	if m.spotifyState != nil &&
-		m.spotifyState.PlayerState.Item != nil {
-		songTitle = m.spotifyState.PlayerState.Item.Name
+	if playerState.Item != nil {
+		songTitle = playerState.Item.Name
 	}
 
 	var artist = "Unknown Artist"
-	if m.spotifyState != nil &&
-		m.spotifyState.PlayerState.Item != nil {
-		artist = m.spotifyState.PlayerState.Item.Artists[0].Name
+	if playerState.Item != nil {
+		artist = playerState.Item.Artists[0].Name
 	}
 
 	titleStyle := lipgloss.NewStyle().
@@ -83,9 +83,9 @@ func (m audioPlayerModel) View() string {
 		Width(8)
 
 	var duration = 0
-	if m.spotifyState != nil &&
-		m.spotifyState.PlayerState.Item != nil {
-		duration = int(m.spotifyState.PlayerState.Item.Duration / 1000)
+	playerState := m.spotifyState.GetPlayerState()
+	if playerState.Item != nil {
+		duration = int(playerState.Item.Duration / 1000)
 	}
 
 	// Create the progress bar
@@ -117,7 +117,8 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("Error updating player state")
 			return m, nil
 		}
-		m.progress = int(m.spotifyState.PlayerState.Progress / 1000)
+		playerState := m.spotifyState.GetPlayerState()
+		m.progress = int(playerState.Progress / 1000)
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -138,10 +139,11 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		if m.spotifyState.PlayerState.Playing {
+		playerState := m.spotifyState.GetPlayerState()
+		if playerState.Playing {
 			m.progress++
 
-			if m.progress > int(m.spotifyState.PlayerState.Item.Duration/1000) {
+			if m.progress > int(playerState.Item.Duration/1000) {
 				m.progress = 0
 
 				// Check queue and emit autoplay message when song ends
@@ -170,7 +172,8 @@ func tickCmd() tea.Cmd {
 func (m audioPlayerModel) volumeControlView() string {
 	var volume = 0
 	if m.spotifyState != nil {
-		volume = int(m.spotifyState.PlayerState.Device.Volume)
+		playerState := m.spotifyState.GetPlayerState()
+		volume = int(playerState.Device.Volume)
 	}
 
 	barStyle := lipgloss.NewStyle().

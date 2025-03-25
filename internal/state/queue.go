@@ -26,7 +26,7 @@ func (s *SpotifyState) FetchQueue() tea.Cmd {
 		log.Println("SpotifyState: Queue:", queue)
 
 		s.mu.Lock()
-		s.Queue = queue.Items
+		s.queue = queue.Items
 		s.mu.Unlock()
 
 		return QueueUpdatedMsg{
@@ -56,7 +56,7 @@ func (s *SpotifyState) FetchRecommendations() tea.Cmd {
 
 		// If we have a currently playing track, use it as a seed
 		s.mu.RLock()
-		currentItem := s.PlayerState.Item
+		currentItem := s.playerState.Item
 		s.mu.RUnlock()
 
 		if currentItem != nil {
@@ -121,7 +121,7 @@ func (s *SpotifyState) FetchRecommendations() tea.Cmd {
 			log.Printf("SpotifyState: Error fetching queue after recommendations: %v", err)
 		} else {
 			s.mu.Lock()
-			s.Queue = queue.Items
+			s.queue = queue.Items
 			s.mu.Unlock()
 		}
 
@@ -132,7 +132,7 @@ func (s *SpotifyState) FetchRecommendations() tea.Cmd {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
 		} else {
 			s.mu.Lock()
-			s.PlayerState = *state
+			s.playerState = *state
 			s.mu.Unlock()
 		}
 
@@ -150,7 +150,7 @@ func (s *SpotifyState) PlayRecommendedTrack() tea.Cmd {
 
 		// If we have a currently playing track, use it as a seed
 		s.mu.RLock()
-		currentItem := s.PlayerState.Item
+		currentItem := s.playerState.Item
 		s.mu.RUnlock()
 
 		if currentItem != nil {
@@ -195,7 +195,7 @@ func (s *SpotifyState) PlayRecommendedTrack() tea.Cmd {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
 		} else {
 			s.mu.Lock()
-			s.PlayerState = *state
+			s.playerState = *state
 			s.mu.Unlock()
 		}
 

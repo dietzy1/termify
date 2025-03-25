@@ -108,8 +108,9 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If the queue is not empty, Spotify will automatically play the next song
 		// If the queue is empty, we need to play the next track based on the current view
 
-		log.Println("Autoplaying next track", len(m.spotifyState.Queue))
-		for _, track := range m.spotifyState.Queue {
+		queue := m.spotifyState.GetQueue()
+		log.Println("Autoplaying next track", queue)
+		for _, track := range queue {
 			log.Println("Queue contains track:", track.Name)
 		}
 
@@ -121,10 +122,10 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case m.focusedModel == FocusPlaylistView || m.focusedModel == FocusLibrary:
 				// PlaylistView handles both normal playlists and other track views (artist, album)
-				if nextTrack := m.playlistView.GetNextTrack(); nextTrack != "" {
+				/* if nextTrack := m.playlistView.GetNextTrack(); nextTrack != "" {
 					log.Printf("Playing next track from playlist: %s", nextTrack)
 					return m, m.spotifyState.PlayTrack(nextTrack)
-				}
+				} */
 
 			case m.isSearchViewFocus():
 				// Handle search view autoplay

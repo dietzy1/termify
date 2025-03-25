@@ -172,7 +172,8 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	//Playback controls globals
 	switch {
 	case key.Matches(msg, DefaultKeyMap.PlayPause):
-		if m.spotifyState.PlayerState.Playing {
+		playerState := m.spotifyState.GetPlayerState()
+		if playerState.Playing {
 			return m, m.spotifyState.PausePlayback(), true
 		}
 		return m, m.spotifyState.StartPlayback(), true

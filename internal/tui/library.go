@@ -48,7 +48,6 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
-	// Initialize empty list with fixed width
 	l := list.New([]list.Item{}, delegate, itemWidth+2, 0) // +2 for borders
 	l.Title = "Your Library"
 	l.Styles.TitleBar = lipgloss.NewStyle().
@@ -88,7 +87,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
 			return m, ShowError("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
 		}
-		log.Printf("Application: Converting %d playlists to list items", len(m.spotifyState.Playlists))
+
 		m.list.SetItems(m.convertPlaylistsToItems())
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 
@@ -154,8 +153,11 @@ func (m libraryModel) View() string {
 }
 
 func (m libraryModel) convertPlaylistsToItems() []list.Item {
-	items := make([]list.Item, 0, len(m.spotifyState.Playlists))
-	for _, p := range m.spotifyState.Playlists {
+
+	playlists := m.spotifyState.GetPlaylists()
+
+	items := make([]list.Item, 0, len(playlists))
+	for _, p := range playlists {
 		title := p.Name
 		if title == "" {
 			title = "Untitled Playlist"

@@ -45,13 +45,13 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 		}
 
 		s.mu.Lock()
-		s.SearchResults.Tracks = results.Tracks.Tracks
-		s.SearchResults.Artists = results.Artists.Artists
-		s.SearchResults.Albums = results.Albums.Albums
-		s.SearchResults.Playlists = results.Playlists.Playlists
+		s.searchResults.tracks = results.Tracks.Tracks
+		s.searchResults.artists = results.Artists.Artists
+		s.searchResults.albums = results.Albums.Albums
+		s.searchResults.playlists = results.Playlists.Playlists
 
 		// Get a local snapshot of the Tracks length for logging
-		tracksLength := len(s.Tracks)
+		tracksLength := len(s.tracks)
 		s.mu.Unlock()
 
 		log.Printf("SpotifyState: Found %d tracks", tracksLength)

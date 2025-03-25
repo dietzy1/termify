@@ -108,7 +108,8 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
-					id := m.spotifyState.SearchResults.Tracks[index].ID
+					id := m.spotifyState.GetSearchResultTracks()[index].ID
+					//id := m.spotifyState.SearchResults.Tracks[index].ID
 					// Play the track and remain on the current view
 					return m, tea.Batch(
 						m.spotifyState.PlayTrack(id),
@@ -120,7 +121,8 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.AddToQueue) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
-					id := m.spotifyState.SearchResults.Tracks[index].ID
+					//id := m.spotifyState.SearchResults.Tracks[index].ID
+					id := m.spotifyState.GetSearchResultTracks()[index].ID
 					return m, m.spotifyState.AddToQueue(id)
 				}
 			}
@@ -132,9 +134,10 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.playlistList.Items()) > 0 {
 					index := m.playlistList.Index()
-					playlistID := m.spotifyState.SearchResults.Playlists[index].ID
+					//playlistID := m.spotifyState.SearchResults.Playlists[index].ID
+					playlistID := m.spotifyState.GetSearchResultPlaylists()[index].ID
 					log.Println("Opening playlist view for: ", playlistID)
-					m.spotifyState.SelectedID = playlistID
+					m.spotifyState.SetSelectedID(playlistID)
 
 					//We somehow need to pass along that we opened a playlist called XX
 
@@ -150,9 +153,10 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.artistList.Items()) > 0 {
 					index := m.artistList.Index()
-					artistID := m.spotifyState.SearchResults.Artists[index].ID
+					//artistID := m.spotifyState.SearchResults.Artists[index].ID
+					artistID := m.spotifyState.GetSearchResultArtists()[index].ID
 					log.Println("Opening artist view for: ", artistID)
-					m.spotifyState.SelectedID = artistID
+					m.spotifyState.SetSelectedID(artistID)
 
 					// Use helper function
 					return m, NavigateToPlaylistView(artistID, artistTopTracksView)
@@ -166,9 +170,11 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.albumList.Items()) > 0 {
 					index := m.albumList.Index()
-					albumID := m.spotifyState.SearchResults.Albums[index].ID
+					//albumID := m.spotifyState.SearchResults.Albums[index].ID
+					albumID := m.spotifyState.GetSearchResultAlbums()[index].ID
+
 					log.Println("Opening album view for: ", albumID)
-					m.spotifyState.SelectedID = albumID
+					m.spotifyState.SetSelectedID(albumID)
 					// Use helper function
 					return m, NavigateToPlaylistView(albumID, albumTracksView)
 				}
@@ -245,7 +251,8 @@ func (m *searchViewModel) UpdateSearchResults() {
 	var artistItems []list.Item
 
 	// Process track results
-	for _, track := range m.spotifyState.SearchResults.Tracks {
+	trackSearchResults := m.spotifyState.GetSearchResultTracks()
+	for _, track := range trackSearchResults {
 		artistName := ""
 		if len(track.Artists) > 0 {
 			artistName = track.Artists[0].Name
@@ -257,7 +264,8 @@ func (m *searchViewModel) UpdateSearchResults() {
 	}
 
 	// Process playlist results
-	for _, playlist := range m.spotifyState.SearchResults.Playlists {
+	playlistSearchResults := m.spotifyState.GetSearchResultPlaylists()
+	for _, playlist := range playlistSearchResults {
 
 		ownerName := ""
 		if playlist.Owner.DisplayName != "" {
@@ -271,7 +279,8 @@ func (m *searchViewModel) UpdateSearchResults() {
 	}
 
 	// Process album results
-	for _, album := range m.spotifyState.SearchResults.Albums {
+	albumSearchResults := m.spotifyState.GetSearchResultAlbums()
+	for _, album := range albumSearchResults {
 		artistName := ""
 		if len(album.Artists) > 0 {
 			artistName = album.Artists[0].Name
@@ -283,7 +292,8 @@ func (m *searchViewModel) UpdateSearchResults() {
 	}
 
 	// Process artist results
-	for _, artist := range m.spotifyState.SearchResults.Artists {
+	artistSearchResults := m.spotifyState.GetSearchResultArtists()
+	for _, artist := range artistSearchResults {
 		// For artists, we don't have a specific description field in the API
 		// We could potentially use genres or popularity as a description
 		desc := "Artist"
@@ -399,7 +409,7 @@ func (m *searchViewModel) GetNextTrack(focusedModel FocusedModel) spotify.ID {
 	// Check which list is active and get tracks from that list
 	switch focusedModel {
 	case FocusSearchTracksView:
-		return m.getNextTrackFromList(m.trackList, m.spotifyState.SearchResults.Tracks)
+		return m.getNextTrackFromList(m.trackList, m.spotifyState.GetSearchResultTracks())
 	case FocusSearchArtistsView:
 		// For artists view, we would need to get the artist's top tracks
 		// For simplicity, just return empty and let recommendations handle it
@@ -424,12 +434,13 @@ func (m *searchViewModel) getNextTrackFromList(listModel list.Model, tracks []sp
 	}
 
 	// If no track is currently playing, return the first track
-	if m.spotifyState.PlayerState.Item == nil {
+	playerState := m.spotifyState.GetPlayerState()
+	if playerState.Item == nil {
 		log.Println("No track currently playing, returning first track from search")
 		return tracks[0].ID
 	}
 
-	currentTrackID := m.spotifyState.PlayerState.Item.ID
+	currentTrackID := playerState.Item.ID
 
 	// Find the current track in the search results
 	for i, track := range tracks {

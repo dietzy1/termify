@@ -57,8 +57,8 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ShowError("Error loading tracks", msg.Err.Error())
 		}
 
-		log.Printf("PlaylistView: Converting %d tracks to table rows", len(m.spotifyState.Tracks))
-		m.updateTableWithTracks(m.spotifyState.Tracks)
+		tracks := m.spotifyState.GetTracks()
+		m.updateTableWithTracks(tracks)
 
 	// Handle keyboard events for table navigation
 	case tea.KeyMsg:
@@ -71,8 +71,9 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Select):
 			if selected := m.table.HighlightedRow(); selected.Data != nil {
 				if numStr, ok := selected.Data["#"].(string); ok {
-					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
-						track := m.spotifyState.Tracks[idx-1]
+					tracks := m.spotifyState.GetTracks()
+					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
+						track := tracks[idx-1]
 						log.Printf("PlaylistView: Selected track: %s", track.ID)
 						return m, m.spotifyState.PlayTrack(track.ID)
 					}
@@ -84,8 +85,9 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.AddToQueue):
 			if selected := m.table.HighlightedRow(); selected.Data != nil {
 				if numStr, ok := selected.Data["#"].(string); ok {
-					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(m.spotifyState.Tracks) {
-						track := m.spotifyState.Tracks[idx-1]
+					tracks := m.spotifyState.GetTracks()
+					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
+						track := tracks[idx-1]
 						log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
 						return m, m.spotifyState.AddToQueue(track.ID)
 					}
@@ -113,29 +115,37 @@ func (m playlistViewModel) View() string {
 	maxPage := m.table.MaxPages()
 
 	//TODO: this doesn't support the case where the selected playlist is not in the list of playlists and we are searching instead
+
+	playlists := m.spotifyState.GetPlaylists()
+	selectedId := m.spotifyState.GetSelectedID()
+
 	name := "Unknown Playlist"
-	for _, playlist := range m.spotifyState.Playlists {
-		if playlist.ID == spotify.ID(m.spotifyState.SelectedID) {
+	for _, playlist := range playlists {
+		if playlist.ID == spotify.ID(selectedId) {
 			name = playlist.Name
 			break
 		}
 	}
 	//As fallback check searchResults for the selected playlist and brute force it
 	if name == "Unknown Playlist" {
-		for _, playlist := range m.spotifyState.SearchResults.Playlists {
-			if playlist.ID == spotify.ID(m.spotifyState.SelectedID) {
+		playlistSearchResults := m.spotifyState.GetSearchResultPlaylists()
+		for _, playlist := range playlistSearchResults {
+			if playlist.ID == spotify.ID(selectedId) {
 				name = playlist.Name
 				break
 			}
 		}
-		for _, artist := range m.spotifyState.SearchResults.Artists {
-			if artist.ID == spotify.ID(m.spotifyState.SelectedID) {
+
+		artistsSearchResults := m.spotifyState.GetSearchResultArtists()
+		for _, artist := range artistsSearchResults {
+			if artist.ID == spotify.ID(selectedId) {
 				name = artist.Name
 				break
 			}
 		}
-		for _, album := range m.spotifyState.SearchResults.Albums {
-			if album.ID == spotify.ID(m.spotifyState.SelectedID) {
+		albumsSearchResults := m.spotifyState.GetSearchResultAlbums()
+		for _, album := range albumsSearchResults {
+			if album.ID == spotify.ID(selectedId) {
 				name = album.Name
 				break
 			}
@@ -224,7 +234,7 @@ func createPlaylistTable() table.Model {
 
 // GetNextTrack returns the ID of the next track to play when autoplay is triggered
 // It returns the next track after the currently playing one, or the first track if none is playing
-func (m *playlistViewModel) GetNextTrack() spotify.ID {
+/* func (m *playlistViewModel) GetNextTrack() spotify.ID {
 	if len(m.spotifyState.Tracks) == 0 {
 		log.Println("No tracks in playlist to autoplay")
 		return ""
@@ -255,4 +265,4 @@ func (m *playlistViewModel) GetNextTrack() spotify.ID {
 	// If current track not found in playlist, return the first track
 	log.Println("Current track not found in playlist, returning first track")
 	return spotify.ID(m.spotifyState.Tracks[0].ID)
-}
+} */

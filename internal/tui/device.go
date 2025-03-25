@@ -94,7 +94,7 @@ func (m DeviceSelectorModel) Init() tea.Cmd {
 }
 
 // updateDeviceList converts the spotify devices to list items
-func (m *DeviceSelectorModel) updateDeviceList() {
+/* func (m *DeviceSelectorModel) updateDeviceList() {
 	if m.spotifyState == nil || len(m.spotifyState.DeviceState) == 0 {
 		return
 	}
@@ -121,12 +121,12 @@ func (m *DeviceSelectorModel) updateDeviceList() {
 		})
 	}
 	m.list.SetItems(items)
-}
+} */
 
 // Update handles messages and user input
 func (m DeviceSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Always update device list from the current state
-	m.updateDeviceList()
+	//	m.updateDeviceList()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -153,7 +153,7 @@ func (m DeviceSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the UI
 func (m DeviceSelectorModel) View() string {
 	// Update device list before rendering
-	m.updateDeviceList()
+	//m.updateDeviceList()
 
 	if len(m.list.Items()) == 0 {
 		return "No devices found."

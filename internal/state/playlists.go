@@ -30,7 +30,7 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 		}
 
 		s.mu.Lock()
-		s.Playlists = playlists.Playlists
+		s.playlists = playlists.Playlists
 		s.mu.Unlock()
 
 		log.Printf("SpotifyState: Successfully fetched %d playlists", len(playlists.Playlists))
@@ -59,7 +59,7 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 			log.Printf("SpotifyState: Found cached tracks for playlist %s", playlistID)
 			// Use cached SimpleTracks directly
 			s.mu.Lock()
-			s.Tracks = cachedTracks
+			s.tracks = cachedTracks
 			s.mu.Unlock()
 
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for playlist %s", len(cachedTracks), playlistID)
@@ -104,7 +104,7 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 		}
 
 		s.mu.Lock()
-		s.Tracks = simpleTracks
+		s.tracks = simpleTracks
 		s.tracksCache[playlistID] = simpleTracks
 		s.mu.Unlock()
 
@@ -121,7 +121,7 @@ func (s *SpotifyState) SelectPlaylist(playlistID string) tea.Cmd {
 		playlistID = strings.Split(playlistID, ":")[2]
 
 		s.mu.Lock()
-		s.SelectedID = spotify.ID(playlistID)
+		s.selectedID = spotify.ID(playlistID)
 		s.mu.Unlock()
 
 		return PlaylistSelectedMsg{
