@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -50,10 +53,10 @@ func LoadConfig() (*Config, error) {
 
 	// Define and parse command-line flags
 	var (
-		configPath    = flag.String("config", "", "Path to config file")
-		port          = flag.String("port", "", "Server port")
-		clientID      = flag.String("client-id", "", "Spotify client ID")
-		daemonMode    = flag.Bool("daemon", false, "Run in daemon mode")
+		configPath    = flag.String("config", "", "Path to config file")  //Verify that the config file exists and can be read
+		port          = flag.String("port", "", "Server port")            // Verify that the port is a valid port number and that it is not already in use
+		clientID      = flag.String("client-id", "", "Spotify client ID") // Verify that the client ID is a valid Spotify client ID aka 32 characters long
+		daemonMode    = flag.Bool("daemon", false, "Run in daemon mode")  // Verify that the daemon mode flag is a boolean
 		connectClient = flag.String("connect-client", "", "Spotify connect client to use")
 	)
 	flag.Parse()
@@ -77,7 +80,8 @@ func LoadConfig() (*Config, error) {
 	// Try to load from config file
 	if err := cfg.loadFromFile(configFilePath); err != nil {
 		// Only return error if file exists but couldn't be loaded
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Printf("Config file not found at %s, using default configuration", configFilePath)
 			return nil, fmt.Errorf("failed to load config file: %w", err)
 		}
 	}
@@ -114,6 +118,16 @@ func LoadConfig() (*Config, error) {
 	if cfg.Server.Port != "" && cfg.Server.Port[0] != ':' {
 		cfg.Server.Port = ":" + cfg.Server.Port
 	}
+
+	//Debug log all config values
+	log.Println("=== CONFIGURATION VALUES ===")
+	log.Println("Server:")
+	log.Printf("  Port: %s", cfg.Server.Port)
+	log.Println("Spotify:")
+	log.Printf("  Client ID: %s", cfg.Spotify.ClientID)
+	log.Printf("  Daemon mode: %t", cfg.Spotify.DaemonMode)
+	log.Printf("  Connect client: %s", cfg.Spotify.ConnectClient)
+	log.Println("============================")
 
 	return cfg, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,12 +14,19 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+// Define a message type for clearing queued highlights
+type clearQueuedHighlightMsg struct {
+	TrackID spotify.ID
+}
+
 // PlaylistViewModel represents the table view for playlists and tracks
 type playlistViewModel struct {
-	width, height int
-	table         table.Model
-	isFocused     bool
-	spotifyState  *state.SpotifyState
+	width, height  int
+	table          table.Model
+	isFocused      bool
+	spotifyState   *state.SpotifyState
+	queuedTracks   map[spotify.ID]bool // Track which songs have been queued recently
+	highlightTimer *time.Timer         // Timer to clear the highlight
 }
 
 // NewPlaylistView creates a new playlist view
@@ -26,6 +34,7 @@ func NewPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
 	return playlistViewModel{
 		table:        createPlaylistTable(),
 		spotifyState: spotifyState,
+		queuedTracks: make(map[spotify.ID]bool),
 	}
 }
 
@@ -52,7 +61,6 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case state.TracksUpdatedMsg:
 		if msg.Err != nil {
-
 			log.Printf("PlaylistView: Error loading tracks: %v", msg.Err)
 			return m, ShowError("Error loading tracks", msg.Err.Error())
 		}
@@ -89,11 +97,29 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
 						track := tracks[idx-1]
 						log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
-						return m, m.spotifyState.AddToQueue(track.ID)
+
+						// Mark track as queued and set timer to clear the highlight
+						m.queuedTracks[track.ID] = true
+
+						// Update the table to show the highlight
+						m.updateTableWithTracks(tracks)
+
+						// Return multiple commands: add to queue and start highlight timer
+						return m, tea.Batch(
+							m.spotifyState.AddToQueue(track.ID),
+							tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
+								return clearQueuedHighlightMsg{TrackID: track.ID}
+							}),
+						)
 					}
 				}
 			}
 		}
+	case clearQueuedHighlightMsg:
+		delete(m.queuedTracks, msg.TrackID)
+		tracks := m.spotifyState.GetTracks()
+		m.updateTableWithTracks(tracks)
+		return m, nil
 	}
 
 	// Forward all other messages to the table
@@ -190,9 +216,20 @@ func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) 
 		// Format duration
 		duration := formatTrackDuration(int(track.Duration))
 
+		// Check if this track was recently queued, if so add the "QUEUED" highlight to the title
+		title := track.Name
+		if m.queuedTracks[track.ID] {
+			// Create a highlighted title that shows it's been queued
+			queuedStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(PrimaryColor)).
+				Bold(true)
+
+			title = title + " " + queuedStyle.Render("(Added to queue)")
+		}
+
 		rows = append(rows, table.NewRow(table.RowData{
 			"#":        fmt.Sprintf("%d", i+1),
-			"title":    track.Name,
+			"title":    title,
 			"artist":   artistName,
 			"album":    albumName,
 			"duration": duration,

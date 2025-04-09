@@ -86,6 +86,14 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case clearQueuedHighlightMsg:
+		//Update playlist_view
+		if updatedPlaylistView, cmd, ok := updateSubmodel(m.playlistView, msg, m.playlistView); ok {
+			m.playlistView = updatedPlaylistView
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
 	case ShowErrorMsg:
 		m.errorBar.title = msg.Title
 		m.errorBar.message = msg.Message
