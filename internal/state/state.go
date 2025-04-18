@@ -31,7 +31,6 @@ type SpotifyState struct {
 	mu     sync.RWMutex
 
 	deviceState []spotify.PlayerDevice
-	//Currently playing state
 	playerState spotify.PlayerState
 
 	// Cache for current data
@@ -48,10 +47,8 @@ type SpotifyState struct {
 		playlists []spotify.SimplePlaylist
 	}
 
-	// Queue of tracks to play
 	queue []spotify.FullTrack
 
-	// Currently selected items
 	selectedID spotify.ID
 }
 
@@ -64,14 +61,23 @@ func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	}
 }
 
-// IsQueueEmpty returns true if the queue is empty or nil
 func (s *SpotifyState) IsQueueEmpty() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.queue == nil || len(s.queue) == 0
+
+	if s.queue == nil || len(s.queue) == 0 {
+		return true
+	}
+
+	// Check if all items in the queue are the same
+	for i := 1; i < len(s.queue); i++ {
+		if s.queue[i].ID != s.queue[0].ID {
+			return false
+		}
+	}
+	return true
 }
 
-// GetDeviceState returns a copy of the device state
 func (s *SpotifyState) GetDeviceState() []spotify.PlayerDevice {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -84,14 +90,12 @@ func (s *SpotifyState) GetDeviceState() []spotify.PlayerDevice {
 	return deviceCopy
 }
 
-// GetPlayerState returns a copy of the player state
 func (s *SpotifyState) GetPlayerState() spotify.PlayerState {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.playerState
 }
 
-// GetPlaylists returns a copy of the playlists
 func (s *SpotifyState) GetPlaylists() []spotify.SimplePlaylist {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -103,7 +107,6 @@ func (s *SpotifyState) GetPlaylists() []spotify.SimplePlaylist {
 	return playlistsCopy
 }
 
-// GetTracks returns a copy of the tracks
 func (s *SpotifyState) GetTracks() []spotify.SimpleTrack {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -115,7 +118,6 @@ func (s *SpotifyState) GetTracks() []spotify.SimpleTrack {
 	return tracksCopy
 }
 
-// GetTracksCached returns a copy of the tracks for a specific source ID from cache
 func (s *SpotifyState) GetTracksCached(sourceID spotify.ID) ([]spotify.SimpleTrack, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -130,7 +132,6 @@ func (s *SpotifyState) GetTracksCached(sourceID spotify.ID) ([]spotify.SimpleTra
 	return tracksCopy, true
 }
 
-// GetSearchResultTracks returns a copy of the search result tracks
 func (s *SpotifyState) GetSearchResultTracks() []spotify.FullTrack {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -143,7 +144,6 @@ func (s *SpotifyState) GetSearchResultTracks() []spotify.FullTrack {
 	return tracksCopy
 }
 
-// GetSearchResultArtists returns a copy of the search result artists
 func (s *SpotifyState) GetSearchResultArtists() []spotify.FullArtist {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -156,7 +156,6 @@ func (s *SpotifyState) GetSearchResultArtists() []spotify.FullArtist {
 	return artistsCopy
 }
 
-// GetSearchResultAlbums returns a copy of the search result albums
 func (s *SpotifyState) GetSearchResultAlbums() []spotify.SimpleAlbum {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -169,7 +168,6 @@ func (s *SpotifyState) GetSearchResultAlbums() []spotify.SimpleAlbum {
 	return albumsCopy
 }
 
-// GetSearchResultPlaylists returns a copy of the search result playlists
 func (s *SpotifyState) GetSearchResultPlaylists() []spotify.SimplePlaylist {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -182,7 +180,6 @@ func (s *SpotifyState) GetSearchResultPlaylists() []spotify.SimplePlaylist {
 	return playlistsCopy
 }
 
-// GetQueue returns a copy of the queue
 func (s *SpotifyState) GetQueue() []spotify.FullTrack {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -195,57 +192,49 @@ func (s *SpotifyState) GetQueue() []spotify.FullTrack {
 	return queueCopy
 }
 
-// GetSelectedID returns the currently selected ID
 func (s *SpotifyState) GetSelectedID() spotify.ID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.selectedID
 }
 
-// SetDeviceState safely updates the device state
 func (s *SpotifyState) SetDeviceState(devices []spotify.PlayerDevice) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.deviceState = devices
 }
 
-// SetPlayerState safely updates the player state
 func (s *SpotifyState) SetPlayerState(state spotify.PlayerState) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.playerState = state
 }
 
-// SetPlaylists safely updates the playlists
 func (s *SpotifyState) SetPlaylists(playlists []spotify.SimplePlaylist) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.playlists = playlists
 }
 
-// SetTracks safely updates the tracks
 func (s *SpotifyState) SetTracks(tracks []spotify.SimpleTrack) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tracks = tracks
 }
 
-// AddToTracksCache safely adds tracks to the cache
 func (s *SpotifyState) AddToTracksCache(sourceID spotify.ID, tracks []spotify.SimpleTrack) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tracksCache[sourceID] = tracks
 }
 
-// ClearTracksCache safely clears the tracks cache
 func (s *SpotifyState) ClearTracksCache() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tracksCache = make(map[spotify.ID][]spotify.SimpleTrack)
 }
 
-// SetSearchResults safely updates all search results
-func (s *SpotifyState) SetSearchResults(tracks []spotify.FullTrack, artists []spotify.FullArtist,
+func (s *SpotifyState) setSearchResults(tracks []spotify.FullTrack, artists []spotify.FullArtist,
 	albums []spotify.SimpleAlbum, playlists []spotify.SimplePlaylist) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -255,28 +244,24 @@ func (s *SpotifyState) SetSearchResults(tracks []spotify.FullTrack, artists []sp
 	s.searchResults.playlists = playlists
 }
 
-// SetQueue safely updates the queue
 func (s *SpotifyState) SetQueue(queue []spotify.FullTrack) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.queue = queue
 }
 
-// AddTrackToQueueLocal safely adds an item to the queue without API calls
 func (s *SpotifyState) AddTrackToQueueLocal(track spotify.FullTrack) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.queue = append(s.queue, track)
 }
 
-// ClearQueue safely clears the queue
 func (s *SpotifyState) ClearQueue() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.queue = nil
 }
 
-// SetSelectedID safely updates the selected ID
 func (s *SpotifyState) SetSelectedID(id spotify.ID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
