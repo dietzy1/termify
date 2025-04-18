@@ -128,14 +128,29 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, DefaultKeyMap.Help):
-		m.showHelp = !m.showHelp
+		//m.showHelp = !m.showHelp
+		if m.activeViewport == HelpView {
+			m.activeViewport = MainView
+		} else {
+			m.activeViewport = HelpView
+		}
+
 		return m, nil, true
 	}
 
+	// Trigger error bar if E key is pressed
+	if key.Matches(msg, DefaultKeyMap.Copy) {
+
+		return m, ShowErrorToast(
+			"Error",
+			"An error occurred while processing your request. Please try again.",
+		), true
+	}
+
 	// If we're in help mode, check for Return key to exit help
-	if m.showHelp {
+	if m.activeViewport == HelpView {
 		if key.Matches(msg, DefaultKeyMap.Return) {
-			m.showHelp = false
+			m.activeViewport = MainView
 			return m, nil, true
 		}
 		// Let other keys pass through when in help mode

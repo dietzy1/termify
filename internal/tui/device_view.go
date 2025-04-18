@@ -160,3 +160,16 @@ func (m DeviceSelectorModel) View() string {
 	}
 	return m.list.View()
 }
+
+func (m applicationModel) viewDevice() string {
+	playbackSection := m.renderPlaybackSection()
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		m.navbar.View(),
+		lipgloss.JoinVertical(lipgloss.Top,
+			m.deviceSelector.View(),
+			playbackSection,
+			"\r",
+		))
+}

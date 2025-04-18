@@ -18,6 +18,7 @@ type KeyMap struct {
 	Copy       key.Binding
 	Return     key.Binding
 	AddToQueue key.Binding
+	ViewQueue  key.Binding
 
 	// System
 	Quit     key.Binding
@@ -64,6 +65,10 @@ var DefaultKeyMap = KeyMap{
 	AddToQueue: key.NewBinding(
 		key.WithKeys("q"),
 		key.WithHelp("q", "Add to queue"),
+	),
+	ViewQueue: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", "View queue"),
 	),
 	CycleFocusForward: key.NewBinding(
 		key.WithKeys("tab"),

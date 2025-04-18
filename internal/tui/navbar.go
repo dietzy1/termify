@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -16,10 +18,8 @@ const smallLogo = `Termify`
 
 var _ tea.Model = (*navbarModel)(nil)
 
-const SHRINKHEIGHT = 24
-
 type navbarModel struct {
-	width, applicationHeight int
+	width, height int
 }
 
 func newNavbar() navbarModel {
@@ -34,8 +34,9 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.applicationHeight = msg.Height
+		m.height = msg.Height
 	}
+
 	return m, nil
 }
 
@@ -58,12 +59,26 @@ func (m navbarModel) View() string {
 			Render("Devices"),
 	)
 
+	// New queue text with count
+	queueText := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render(DefaultKeyMap.ViewQueue.Keys()...),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			MarginLeft(1).
+			Render(fmt.Sprintf("View Queue (%d)", 1)),
+	)
+
 	var paddingTop = 0
-	if m.applicationHeight > SHRINKHEIGHT {
+	if m.height > 1 {
 		paddingTop = 2
 	}
 
 	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
+		lipgloss.NewStyle().
+			PaddingTop(paddingTop).
+			PaddingRight(2).
+			PaddingLeft(2).
+			Render(queueText),
 		lipgloss.NewStyle().
 			PaddingTop(paddingTop).
 			PaddingRight(2).
@@ -80,20 +95,27 @@ func (m navbarModel) View() string {
 		Foreground(lipgloss.Color(PrimaryColor)).
 		MarginLeft(1).
 		Render(func() string {
-			if m.applicationHeight > SHRINKHEIGHT {
+			if m.height > 1 {
 				return logo
 			}
 			return smallLogo
 		}())
 
+	// Calculate available width for proper spacing
+	availableWidth := m.width - lipgloss.Width(leftSection) - lipgloss.Width(rightSection)
+	if availableWidth < 0 {
+		availableWidth = 0
+	}
+
 	// Create a full-width container with left and right sections
 	return lipgloss.NewStyle().
 		Width(m.width).
+		Height(m.height).
 		Render(
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
 				leftSection,
-				lipgloss.NewStyle().Width(m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection)).Render(""),
+				lipgloss.NewStyle().Width(availableWidth).Render(""),
 				rightSection,
 			),
 		)
