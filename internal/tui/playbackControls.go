@@ -32,7 +32,7 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Println("Playback controls recieved player state update")
 		if msg.Err != nil {
 			log.Println("Error updating player state")
-			return m, ShowError("Error updating player state", "Illegal action")
+			return m, ShowErrorToast("Error updating player state", "Illegal action")
 		}
 		return m, nil
 
@@ -65,11 +65,9 @@ func (m playbackControlsModel) View() string {
 
 	playerState := m.spotifyState.GetPlayerState()
 
-	// Get current states (changed from string comparison to boolean)
 	shuffleState := playerState.ShuffleState
 	repeatState := playerState.RepeatState
 
-	//TODO: This is a daterace we need to write a function which accesses these things using the mutex to fix
 	if playerState.Playing {
 		playPauseButton = "⏸"
 	}
@@ -109,4 +107,44 @@ func (m playbackControlsModel) View() string {
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, renderedButtons...)
+}
+
+func (m applicationModel) renderPlaybackSection() string {
+	// Get the song info and volume control views
+	songInfoView := m.audioPlayer.songInfoView()
+	volumeControlView := m.audioPlayer.volumeControlView()
+
+	// Calculate the available width for the center section
+	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
+
+	// Style for the playback section
+	combinedPlaybackSectionStyle := lipgloss.NewStyle().
+		MaxWidth(m.width)
+
+	// Center both components individually
+	centeredPlaybackControls := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		MaxHeight(4).
+		Render(m.playbackControl.View())
+
+	centeredAudioPlayer := lipgloss.NewStyle().
+		Width(availableWidth).
+		Align(lipgloss.Center).
+		MaxHeight(1).
+		Render(m.audioPlayer.View())
+
+	// Join them vertically
+	centerSection := lipgloss.JoinVertical(
+		lipgloss.Center,
+		centeredPlaybackControls,
+		centeredAudioPlayer,
+	)
+
+	return combinedPlaybackSectionStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Bottom,
+			songInfoView,
+			centerSection,
+			volumeControlView),
+	)
 }

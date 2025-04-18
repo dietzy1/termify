@@ -85,7 +85,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case state.PlaylistsUpdatedMsg:
 		if msg.Err != nil {
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
-			return m, ShowError("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
+			return m, ShowErrorToast("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
 		}
 
 		m.list.SetItems(m.convertPlaylistsToItems())
@@ -147,6 +147,8 @@ func (m libraryModel) View() string {
 	m.list.SetDelegate(delegate)
 
 	return lipgloss.NewStyle().
+		Height(m.height - 2).
+		MaxHeight(m.height).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(getBorderStyle(m.isFocused)).
 		Render(m.list.View())
