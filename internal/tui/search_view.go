@@ -89,7 +89,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.UpdateSearchResults()
 		} else {
 			log.Printf("Search view received error in search results: %v", msg.Err)
-			return m, ShowError(
+			return m, ShowErrorToast(
 				"Error loading search results",
 				msg.Err.Error(),
 			)
@@ -109,7 +109,6 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
 					id := m.spotifyState.GetSearchResultTracks()[index].ID
-					//id := m.spotifyState.SearchResults.Tracks[index].ID
 					// Play the track and remain on the current view
 					return m, tea.Batch(
 						m.spotifyState.PlayTrack(id),
@@ -121,7 +120,6 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.AddToQueue) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
-					//id := m.spotifyState.SearchResults.Tracks[index].ID
 					id := m.spotifyState.GetSearchResultTracks()[index].ID
 					return m, m.spotifyState.AddToQueue(id)
 				}
@@ -134,7 +132,6 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.Select) {
 				if len(m.playlistList.Items()) > 0 {
 					index := m.playlistList.Index()
-					//playlistID := m.spotifyState.SearchResults.Playlists[index].ID
 					playlistID := m.spotifyState.GetSearchResultPlaylists()[index].ID
 					log.Println("Opening playlist view for: ", playlistID)
 					m.spotifyState.SetSelectedID(playlistID)
@@ -409,25 +406,66 @@ func (m *searchViewModel) GetNextTrack(focusedModel FocusedModel) spotify.ID {
 	// Check which list is active and get tracks from that list
 	switch focusedModel {
 	case FocusSearchTracksView:
-		return m.getNextTrackFromList(m.trackList, m.spotifyState.GetSearchResultTracks())
+		// For tracks, we should play the next track in the search results
+		tracks := m.spotifyState.GetSearchResultTracks()
+		return m.getNextTrackFromList(tracks)
+
 	case FocusSearchArtistsView:
-		// For artists view, we would need to get the artist's top tracks
-		// For simplicity, just return empty and let recommendations handle it
-		return ""
+		// For artists, we need to look at the tracks loaded in the state
+		// Since selecting an artist loads their top tracks
+		tracks := m.spotifyState.GetTracks()
+		if len(tracks) == 0 {
+			return ""
+		}
+
+		// Convert SimpleTrack to FullTrack format for the helper method
+		fullTracks := make([]spotify.FullTrack, len(tracks))
+		for i, track := range tracks {
+			fullTracks[i] = spotify.FullTrack{
+				SimpleTrack: track,
+			}
+		}
+		return m.getNextTrackFromList(fullTracks)
+
 	case FocusSearchAlbumsView:
-		// For albums view, we would need to get the album's tracks
-		// For simplicity, just return empty and let recommendations handle it
-		return ""
+		// For albums, we also need to look at the tracks loaded in the state
+		// Since selecting an album loads its tracks
+		tracks := m.spotifyState.GetTracks()
+		if len(tracks) == 0 {
+			return ""
+		}
+
+		// Convert SimpleTrack to FullTrack format for the helper method
+		fullTracks := make([]spotify.FullTrack, len(tracks))
+		for i, track := range tracks {
+			fullTracks[i] = spotify.FullTrack{
+				SimpleTrack: track,
+			}
+		}
+		return m.getNextTrackFromList(fullTracks)
+
 	case FocusSearchPlaylistsView:
-		// For playlists view, we would need to get the playlist's tracks
-		// For simplicity, just return empty and let recommendations handle it
-		return ""
+		// For playlists, we need to look at the tracks loaded in the state
+		// Since selecting a playlist loads its tracks
+		tracks := m.spotifyState.GetTracks()
+		if len(tracks) == 0 {
+			return ""
+		}
+
+		// Convert SimpleTrack to FullTrack format for the helper method
+		fullTracks := make([]spotify.FullTrack, len(tracks))
+		for i, track := range tracks {
+			fullTracks[i] = spotify.FullTrack{
+				SimpleTrack: track,
+			}
+		}
+		return m.getNextTrackFromList(fullTracks)
 	}
 	return ""
 }
 
 // Helper method to get the next track from a list of tracks
-func (m *searchViewModel) getNextTrackFromList(listModel list.Model, tracks []spotify.FullTrack) spotify.ID {
+func (m *searchViewModel) getNextTrackFromList(tracks []spotify.FullTrack) spotify.ID {
 	if len(tracks) == 0 {
 		log.Println("No tracks in search results to autoplay")
 		return ""
