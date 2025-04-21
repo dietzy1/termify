@@ -52,13 +52,6 @@ func (m navbarModel) View() string {
 			Render("Help"),
 	)
 
-	devicesText := lipgloss.JoinHorizontal(lipgloss.Left,
-		keyStyle.Render("d "),
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			Render("Devices"),
-	)
-
 	// New queue text with count
 	queueText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render(DefaultKeyMap.ViewQueue.Keys()...),
@@ -79,11 +72,6 @@ func (m navbarModel) View() string {
 			PaddingRight(2).
 			PaddingLeft(2).
 			Render(queueText),
-		lipgloss.NewStyle().
-			PaddingTop(paddingTop).
-			PaddingRight(2).
-			PaddingLeft(2).
-			Render(devicesText),
 		lipgloss.NewStyle().
 			PaddingTop(paddingTop).
 			PaddingRight(2).

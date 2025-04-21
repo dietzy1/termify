@@ -30,7 +30,7 @@ type playlistViewModel struct {
 }
 
 // NewPlaylistView creates a new playlist view
-func NewPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
+func newPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
 	return playlistViewModel{
 		table:        createPlaylistTable(),
 		spotifyState: spotifyState,
@@ -268,7 +268,7 @@ func createPlaylistTable() table.Model {
 
 // GetNextTrack returns the ID of the next track to play when autoplay is triggered
 // It returns the next track after the currently playing one, or the first track if none is playing
-func (m *playlistViewModel) GetNextTrack() spotify.ID {
+func (m *playlistViewModel) getNextTrack() spotify.ID {
 
 	tracks := m.spotifyState.GetTracks()
 	if len(tracks) == 0 {

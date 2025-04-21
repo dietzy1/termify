@@ -112,6 +112,8 @@ func (m playbackControlsModel) View() string {
 func (m applicationModel) renderPlaybackSection() string {
 	// Get the song info and volume control views
 	songInfoView := m.audioPlayer.songInfoView()
+
+	device := m.deviceSelector.View()
 	volumeControlView := m.audioPlayer.volumeControlView()
 
 	// Calculate the available width for the center section
@@ -141,10 +143,24 @@ func (m applicationModel) renderPlaybackSection() string {
 		centeredAudioPlayer,
 	)
 
+	rightSection := lipgloss.JoinVertical(
+		lipgloss.Right,
+		device,
+		volumeControlView,
+	)
+
+	/* containerStyle := lipgloss.NewStyle().
+		Width(28).
+		Align(lipgloss.Right)
+
+	if m.width < SHRINKWIDTH {
+		containerStyle = containerStyle.Width(20)
+	} */
+
 	return combinedPlaybackSectionStyle.Render(
 		lipgloss.JoinHorizontal(lipgloss.Bottom,
 			songInfoView,
 			centerSection,
-			volumeControlView),
+			rightSection),
 	)
 }

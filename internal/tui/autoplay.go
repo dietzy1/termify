@@ -21,7 +21,7 @@ func (m applicationModel) handleAutoplay() (applicationModel, tea.Cmd) {
 		switch {
 		case m.focusedModel == FocusPlaylistView || m.focusedModel == FocusLibrary:
 			// PlaylistView handles both normal playlists and other track views (artist, album)
-			if nextTrack := m.playlistView.GetNextTrack(); nextTrack != "" {
+			if nextTrack := m.playlistView.getNextTrack(); nextTrack != "" {
 				log.Printf("Playing next track from playlist: %s", nextTrack)
 				return m, m.spotifyState.PlayTrack(nextTrack)
 			}

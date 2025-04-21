@@ -38,7 +38,7 @@ type searchViewModel struct {
 }
 
 // NewSearchView creates a new search view
-func NewSearchView(spotifyState *state.SpotifyState) searchViewModel {
+func newSearchView(spotifyState *state.SpotifyState) searchViewModel {
 	m := searchViewModel{
 		spotifyState: spotifyState,
 		trackList:    createEmptyList("Tracks"),
