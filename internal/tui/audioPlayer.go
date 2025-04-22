@@ -178,8 +178,8 @@ func (m audioPlayerModel) volumeControlView() string {
 	}
 
 	barStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
-		/* MarginRight(1) */
+		Foreground(lipgloss.Color(PrimaryColor)).
+		PaddingRight(2)
 
 	emptyBarStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor))
@@ -214,7 +214,7 @@ func (m audioPlayerModel) volumeControlView() string {
 	containerStyle := lipgloss.NewStyle().
 		Width(28).
 		Align(lipgloss.Right).
-		MaxHeight(5)
+		MaxHeight(1)
 
 	if m.width < SHRINKWIDTH {
 		containerStyle = containerStyle.Width(20)

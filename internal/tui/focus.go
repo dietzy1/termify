@@ -19,6 +19,8 @@ const (
 	FocusSearchPlaylistsView
 	FocusSearchArtistsView
 	FocusSearchAlbumsView
+
+	FocusDeviceSelector
 )
 
 func (m applicationModel) isSearchViewFocus() bool {
@@ -151,6 +153,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	if m.activeViewport == HelpView {
 		if key.Matches(msg, DefaultKeyMap.Return) {
 			m.activeViewport = MainView
+			m.deviceSelector.Blur()
 			return m, nil, true
 		}
 		// Let other keys pass through when in help mode
@@ -168,11 +171,18 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		} else {
 			return m, NavigateToSearch(), true
 		}
+	case key.Matches(msg, DefaultKeyMap.Device):
+		m.focusedModel = FocusDeviceSelector
+		m.deviceSelector.Focus()
+		return m, nil, true
+
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
 		m.searchBar.ExitSearchMode()
+		m.deviceSelector.Blur()
 		return m, NavigateToLibrary(), true
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
 		m.searchBar.ExitSearchMode()
+		m.deviceSelector.Blur()
 
 		return m, tea.Batch(
 			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
@@ -233,6 +243,11 @@ func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case FocusSearchBar:
 		searchBar, cmd := m.searchBar.Update(msg)
 		m.searchBar = searchBar.(searchbarModel)
+		cmds = append(cmds, cmd)
+
+	case FocusDeviceSelector:
+		deviceSelector, cmd := m.deviceSelector.Update(msg)
+		m.deviceSelector = deviceSelector.(deviceSelectorModel)
 		cmds = append(cmds, cmd)
 	}
 

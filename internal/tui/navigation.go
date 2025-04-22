@@ -102,6 +102,9 @@ func (m applicationModel) renderNavigationHelp() string {
 	case FocusSearchBar:
 		focusName = "Search"
 		helpText = "Esc: Exit search | tab: Navigate to content"
+	case FocusDeviceSelector:
+		focusName = "Device selection"
+		helpText = "←/→: Navigate devices | Enter: Select device | Esc: Back"
 	}
 
 	helpStyle := lipgloss.NewStyle().

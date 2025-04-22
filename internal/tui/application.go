@@ -28,7 +28,7 @@ type applicationModel struct {
 	searchView      searchViewModel
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
-	deviceSelector  DeviceSelectorModel
+	deviceSelector  deviceSelectorModel
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -54,10 +54,11 @@ func newApplication(client *spotify.Client) applicationModel {
 		navbar:          newNavbar(),
 		library:         newLibrary(spotifyState),
 		searchBar:       newSearchbar(spotifyState),
-		playlistView:    NewPlaylistView(spotifyState),
-		searchView:      NewSearchView(spotifyState),
+		playlistView:    newPlaylistView(spotifyState),
+		searchView:      newSearchView(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
+		deviceSelector:  NewDeviceSelector(spotifyState),
 		errorBar:        errorMsg{},
 		activeViewport:  MainView,
 	}
@@ -116,6 +117,12 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
+
+	case state.DevicesUpdatedMsg:
+		if updatedDevices, cmd, ok := updateSubmodel(m.deviceSelector, msg, m.deviceSelector); ok {
+			m.deviceSelector = updatedDevices
+			cmds = append(cmds, cmd)
+		}
 
 	case state.SearchResultsUpdatedMsg:
 
@@ -192,7 +199,7 @@ func (m applicationModel) View() string {
 	case QueueView:
 		return "Queue"
 	case DeviceView:
-		return m.viewDevice()
+		/* return m.viewDevice() */
 	case HelpView:
 		return m.viewHelp()
 	case MainView:

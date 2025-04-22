@@ -25,6 +25,7 @@ type KeyMap struct {
 	Help     key.Binding
 	Settings key.Binding
 	Search   key.Binding
+	Device   key.Binding
 
 	// Media controls
 	Shuffle    key.Binding
@@ -87,11 +88,11 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("?", "show help view"),
 	),
 	VolumeUp: key.NewBinding(
-		key.WithKeys("shift+up"), // We cannot use this key its used by macOS
+		key.WithKeys("shift+up"),
 		key.WithHelp("shift+↑", "increase volume"),
 	),
 	VolumeDown: key.NewBinding(
-		key.WithKeys("shift+down"), // We cannot use this key its used by macOS
+		key.WithKeys("shift+down"),
 		key.WithHelp("shift+↓", "lower volume"),
 	),
 	Settings: key.NewBinding(
@@ -101,6 +102,10 @@ var DefaultKeyMap = KeyMap{
 	Search: key.NewBinding(
 		key.WithKeys("/"),
 		key.WithHelp("/", "search"),
+	),
+	Device: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "select device"),
 	),
 	Return: key.NewBinding(
 		key.WithKeys("esc"),
