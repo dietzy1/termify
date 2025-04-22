@@ -30,9 +30,7 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 			log.Printf("SpotifyState: Found device: %v", device.Name)
 		}
 
-		s.mu.Lock()
-		s.deviceState = devices
-		s.mu.Unlock()
+		time.Sleep(500 * time.Millisecond)
 
 		//TODO: Here we have an option of potentialling setting a setting as the default transfer playback.
 		err = s.client.TransferPlayback(
@@ -44,6 +42,10 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 			log.Println("Failed to transfer playback to index 0")
 			return nil
 		}
+
+		s.mu.Lock()
+		s.deviceState = devices
+		s.mu.Unlock()
 
 		return DevicesUpdatedMsg{
 			err: nil,

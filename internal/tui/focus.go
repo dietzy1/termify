@@ -130,7 +130,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, DefaultKeyMap.Help):
-		//m.showHelp = !m.showHelp
+
 		if m.activeViewport == HelpView {
 			m.activeViewport = MainView
 		} else {

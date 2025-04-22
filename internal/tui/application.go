@@ -187,25 +187,44 @@ const (
 	MainView viewport = iota
 	// Queue view
 	QueueView
-	// Device view
-	DeviceView
 	// Help view
 	HelpView
 )
 
 func (m applicationModel) View() string {
 
+	var viewportContent string
 	switch m.activeViewport {
 	case QueueView:
-		return "Queue"
-	case DeviceView:
-		/* return m.viewDevice() */
+		viewportContent = "queue"
 	case HelpView:
-		return m.viewHelp()
+		viewportContent = m.renderHelp()
+
 	case MainView:
+		viewportContent = m.viewMain()
 	}
 
-	// Update focus state for components
+	playbackSection := m.renderPlaybackSection()
+
+	var navContent []string
+	navContent = append(navContent, m.navbar.View())
+	errorBar := m.renderErrorBar()
+	if errorBar != "" {
+		navContent = append(navContent, errorBar)
+	}
+
+	navigationHelp := m.renderNavigationHelp()
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Top, navContent...),
+		viewportContent,
+		playbackSection,
+		navigationHelp,
+	)
+}
+
+func (m applicationModel) viewMain() string {
 	m.library.isFocused = m.focusedModel == FocusLibrary
 	m.searchBar.isFocused = m.focusedModel == FocusSearchBar
 	m.playlistView.isFocused = m.focusedModel == FocusPlaylistView
@@ -227,28 +246,17 @@ func (m applicationModel) View() string {
 	}
 
 	library := m.library.View()
-	playbackSection := m.renderPlaybackSection()
 
-	var navContent []string
-	navContent = append(navContent, m.navbar.View())
-	errorBar := m.renderErrorBar()
-	if errorBar != "" {
-		navContent = append(navContent, errorBar)
-	}
-
-	navigationHelp := m.renderNavigationHelp()
-
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		lipgloss.JoinVertical(lipgloss.Top, navContent...),
-		lipgloss.JoinHorizontal(lipgloss.Top,
-			library,
-			lipgloss.JoinVertical(lipgloss.Top,
-				m.searchBar.View(),
-				viewport)),
-		playbackSection,
-		navigationHelp,
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		library,
+		lipgloss.JoinVertical(
+			lipgloss.Top,
+			m.searchBar.View(),
+			viewport,
+		),
 	)
+
 }
 
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {

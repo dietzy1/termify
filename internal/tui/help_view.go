@@ -7,19 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m applicationModel) viewHelp() string {
-	playbackSection := m.renderPlaybackSection()
-
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		m.navbar.View(),
-		lipgloss.JoinVertical(lipgloss.Top,
-			m.renderHelp(),
-			playbackSection,
-			"\r",
-		))
-}
-
 func (m applicationModel) renderHelp() string {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
@@ -42,9 +29,9 @@ func (m applicationModel) renderHelp() string {
 		Foreground(lipgloss.Color(TextColor))
 
 	containerStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder(), true, false, true, false).
+		Border(lipgloss.RoundedBorder(), true, true, true, true).
 		BorderForeground(lipgloss.Color(BorderColor)).
-		Width(m.width - 3).
+		Width(m.width - 2).
 		Align(lipgloss.Center).
 		Height(m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 3)
 
