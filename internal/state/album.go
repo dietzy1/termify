@@ -14,8 +14,10 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 		log.Printf("SpotifyState: Fetching tracks for album: %s", albumId)
 		if albumId == "" {
 			log.Printf("SpotifyState: Invalid album ID")
-			return TracksUpdatedMsg{
-				Err: fmt.Errorf("invalid album ID"),
+			// Return ErrorMsg for invalid ID
+			return ErrorMsg{
+				Title:   "Invalid Input",
+				Message: "Invalid album ID provided.",
 			}
 		}
 
@@ -30,16 +32,18 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 			s.mu.Unlock()
 
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for album %s", len(cachedTracks), albumId)
-			return TracksUpdatedMsg{
-				Err: nil,
-			}
+			// Return success message (empty)
+			return TracksUpdatedMsg{}
 		}
 
+		log.Printf("SpotifyState: No cache found, fetching from API for album %s", albumId)
 		albumTracks, err := s.client.GetAlbum(context.TODO(), albumId)
 		if err != nil {
-			log.Printf("SpotifyState: Error fetching album tracks: %v", err)
-			return TracksUpdatedMsg{
-				Err: err,
+			log.Printf("SpotifyState: Error fetching album info: %v", err)
+			// Return ErrorMsg for API error
+			return ErrorMsg{
+				Title:   fmt.Sprintf("Failed to Fetch Album Info for %s", albumId),
+				Message: err.Error(),
 			}
 		}
 
@@ -70,9 +74,8 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 		s.tracksCache[albumId] = simpleTracks
 		s.mu.Unlock()
 
-		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for album %s", len(allTracks), albumId)
-		return TracksUpdatedMsg{
-			Err: nil,
-		}
+		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for album %s", len(simpleTracks), albumId)
+		// Return success message (empty)
+		return TracksUpdatedMsg{}
 	}
 }

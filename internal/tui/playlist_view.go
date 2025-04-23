@@ -14,7 +14,6 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-// Define a message type for clearing queued highlights
 type clearQueuedHighlightMsg struct {
 	TrackID spotify.ID
 }
@@ -29,7 +28,6 @@ type playlistViewModel struct {
 	highlightTimer *time.Timer         // Timer to clear the highlight
 }
 
-// NewPlaylistView creates a new playlist view
 func newPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
 	return playlistViewModel{
 		table:        createPlaylistTable(),
@@ -38,7 +36,6 @@ func newPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
 	}
 }
 
-// Init initializes the playlist view
 func (m playlistViewModel) Init() tea.Cmd {
 	return nil
 }
@@ -60,11 +57,6 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("PlaylistView width: %d, height: %d", m.width, m.height)
 
 	case state.TracksUpdatedMsg:
-		if msg.Err != nil {
-			log.Printf("PlaylistView: Error loading tracks: %v", msg.Err)
-			return m, ShowErrorToast("Error loading tracks", msg.Err.Error())
-		}
-
 		tracks := m.spotifyState.GetTracks()
 		m.updateTableWithTracks(tracks)
 
@@ -127,7 +119,6 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View renders the playlist view
 func (m playlistViewModel) View() string {
 	m.table = m.table.Border(RoundedTableBorders).
 		HeaderStyle(
@@ -192,12 +183,10 @@ func (m playlistViewModel) View() string {
 	return m.table.View()
 }
 
-// SetFocus sets the focus state of the playlist view
 func (m *playlistViewModel) SetFocus(isFocused bool) {
 	m.isFocused = isFocused
 }
 
-// Update table with tracks
 func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) {
 	var rows []table.Row
 	for i, track := range tracks {
@@ -239,7 +228,6 @@ func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) 
 	m.table = m.table.WithRows(rows)
 }
 
-// createPlaylistTable creates a new table for the playlist view
 func createPlaylistTable() table.Model {
 	return table.New([]table.Column{
 		table.NewColumn("#", "#", 4).WithStyle(lipgloss.NewStyle().Align(lipgloss.Center)),

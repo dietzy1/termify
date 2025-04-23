@@ -75,11 +75,6 @@ func (m queueViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("QueueView width: %d, height: %d", m.width, m.height)
 
 	case state.QueueUpdatedMsg:
-		if msg.Err != nil {
-			log.Printf("QueueView: Error loading queue: %v", msg.Err)
-			return m, ShowErrorToast("Error loading queue", msg.Err.Error())
-		}
-
 		queue := m.spotifyState.GetQueue()
 		m.updateTableWithQueue(queue)
 

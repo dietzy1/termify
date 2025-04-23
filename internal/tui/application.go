@@ -19,9 +19,10 @@ type applicationModel struct {
 	focusedModel   FocusedModel
 	activeViewport viewport
 
-	errorBar errorMsg
-	navbar   navbarModel
-	library  libraryModel
+	// errorBar state.ErrorMsg // THIS ONE NEEDS TO BE CHANGED TO the standalone error model
+	errorToast errorToastModel // Changed from errorBar
+	navbar     navbarModel
+	library    libraryModel
 
 	searchBar       searchbarModel
 	playlistView    playlistViewModel
@@ -59,7 +60,7 @@ func newApplication(client *spotify.Client) applicationModel {
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
 		deviceSelector:  NewDeviceSelector(spotifyState),
-		errorBar:        errorMsg{},
+		errorToast:      newErrorToast(), // Initialize the new model
 		activeViewport:  MainView,
 	}
 }
@@ -78,12 +79,22 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case ShowToastMsg:
-		return m.handleShowErrorMsg(msg)
-	case ErrorTimerExpiredMsg:
-		m.errorBar.title = ""
-		m.errorBar.message = ""
-		return m, tea.WindowSize()
+	case state.ErrorMsg:
+		if updatedErrorToast, cmd, ok := updateSubmodel(m.errorToast, ShowToastMsg{
+			Title:   msg.Title,
+			Message: msg.Message,
+		}, m.errorToast); ok {
+			m.errorToast = updatedErrorToast
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case ShowToastMsg, ErrorTimerExpiredMsg:
+		if updatedErrorToast, cmd, ok := updateSubmodel(m.errorToast, msg, m.errorToast); ok {
+			m.errorToast = updatedErrorToast
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
 
 	case debouncedSearch:
 		if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, msg, m.searchBar); ok {
@@ -208,9 +219,11 @@ func (m applicationModel) View() string {
 
 	var navContent []string
 	navContent = append(navContent, m.navbar.View())
-	errorBar := m.renderErrorBar()
-	if errorBar != "" {
-		navContent = append(navContent, errorBar)
+	// errorBar := m.renderErrorBar()
+	errorToastView := m.errorToast.View() // Get view from the new model
+	if errorToastView != "" {
+		// navContent = append(navContent, errorBar)
+		navContent = append(navContent, errorToastView)
 	}
 
 	navigationHelp := m.renderNavigationHelp()
@@ -261,14 +274,20 @@ func (m applicationModel) viewMain() string {
 
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {
 	var cmds []tea.Cmd
+	//var cmd tea.Cmd // Declare cmd here
 	m.width = msg.Width
 	m.height = msg.Height
 
-	errorHeight := 0
-	if m.errorBar.title != "" {
-		errorHeight = lipgloss.Height(m.renderErrorBar())
-		log.Println("Error height:", errorHeight)
+	// Update errorToast model first as its height might be needed
+	if updatedErrorToast, cmd, ok := updateSubmodel(m.errorToast, tea.WindowSizeMsg{
+		Width: msg.Width,
+	}, m.errorToast); ok {
+		m.errorToast = updatedErrorToast
+		cmds = append(cmds, cmd)
 	}
+
+	errorHeight := m.errorToast.Height() // Use the helper method
+	log.Println("Error height:", errorHeight)
 
 	const SHRINKHEIGHT = 40
 	var navbarHeight = 1
@@ -284,7 +303,13 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	viewportHeight := msg.Height - navbarHeight - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 1 - errorHeight
+	// Calculate remaining height for main viewports
+	// Parent height - navbar height - error toast height - playback controls height - audio player height - navigation help height
+	// Assuming navigationHelp height is constant (e.g., 1 line)
+	playbackSectionHeight := lipgloss.Height(m.renderPlaybackSection()) // Calculate combined height
+	navHelpHeight := 1                                                  // Assuming 1 line for navigation help
+
+	viewportHeight := msg.Height - navbarHeight - errorHeight - playbackSectionHeight - navHelpHeight
 
 	if updatedLibrary, cmd, ok := updateSubmodel(m.library, tea.WindowSizeMsg{
 		Height: viewportHeight,
@@ -293,29 +318,36 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
+	libraryWidth := lipgloss.Width(m.library.View()) // Get current library width after potential update
+	mainContentViewWidth := msg.Width - libraryWidth
+
 	if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, tea.WindowSizeMsg{
-		Width: msg.Width - lipgloss.Width(m.library.View()),
+		Width: mainContentViewWidth,
 	}, m.searchBar); ok {
 		m.searchBar = updatedSearchBar
 		cmds = append(cmds, cmd)
 	}
 
+	searchBarHeight := lipgloss.Height(m.searchBar.View()) // Get search bar height
+	mainViewportContentHeight := viewportHeight - searchBarHeight
+
 	if updatedPlaylistView, cmd, ok := updateSubmodel(m.playlistView, tea.WindowSizeMsg{
-		Width:  msg.Width - lipgloss.Width(m.library.View()),
-		Height: viewportHeight - lipgloss.Height(m.searchBar.View()),
+		Width:  mainContentViewWidth,
+		Height: mainViewportContentHeight,
 	}, m.playlistView); ok {
 		m.playlistView = updatedPlaylistView
 		cmds = append(cmds, cmd)
 	}
 
 	if updatedSearchView, cmd, ok := updateSubmodel(m.searchView, tea.WindowSizeMsg{
-		Width:  msg.Width - lipgloss.Width(m.library.View()),
-		Height: viewportHeight - lipgloss.Height(m.searchBar.View()),
+		Width:  mainContentViewWidth,
+		Height: mainViewportContentHeight,
 	}, m.searchView); ok {
 		m.searchView = updatedSearchView
 		cmds = append(cmds, cmd)
 	}
 
+	// Playback controls and audio player width usually span the full width
 	if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, tea.WindowSizeMsg{
 		Width: msg.Width,
 	}, m.playbackControl); ok {

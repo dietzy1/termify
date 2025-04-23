@@ -140,15 +140,6 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, nil, true
 	}
 
-	// Trigger error bar if E key is pressed
-	if key.Matches(msg, DefaultKeyMap.Copy) {
-
-		return m, ShowErrorToast(
-			"Error",
-			"An error occurred while processing your request. Please try again.",
-		), true
-	}
-
 	// If we're in help mode, check for Return key to exit help
 	if m.activeViewport == HelpView {
 		if key.Matches(msg, DefaultKeyMap.Return) {

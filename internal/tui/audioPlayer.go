@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"log"
 	"strings"
 	"time"
 
@@ -114,10 +113,6 @@ func (m audioPlayerModel) Init() tea.Cmd {
 func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case state.PlayerStateUpdatedMsg:
-		if msg.Err != nil {
-			log.Println("Error updating player state")
-			return m, nil
-		}
 		playerState := m.spotifyState.GetPlayerState()
 		m.progress = int(playerState.Progress / 1000)
 		return m, nil

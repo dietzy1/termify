@@ -1,9 +1,6 @@
 package tui
 
 import (
-	"fmt"
-	"log"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -83,10 +80,10 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case state.PlaylistsUpdatedMsg:
-		if msg.Err != nil {
+		/* if msg.Err != nil {
 			log.Printf("Library: Error updating playlists: %v", msg.Err)
 			return m, ShowErrorToast("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
-		}
+		} */
 
 		m.list.SetItems(m.convertPlaylistsToItems())
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))

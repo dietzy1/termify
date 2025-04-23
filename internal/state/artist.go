@@ -14,8 +14,9 @@ func (s *SpotifyState) FetchTopTracks(artistId spotify.ID) tea.Cmd {
 		log.Printf("SpotifyState: Fetching top tracks for artist: %s", artistId)
 		if artistId == "" {
 			log.Printf("SpotifyState: Invalid artist ID")
-			return TracksUpdatedMsg{
-				Err: fmt.Errorf("invalid artist ID"),
+			return ErrorMsg{
+				Title:   "Invalid Input",
+				Message: "Invalid artist ID provided.",
 			}
 		}
 
@@ -30,16 +31,15 @@ func (s *SpotifyState) FetchTopTracks(artistId spotify.ID) tea.Cmd {
 			s.mu.Unlock()
 
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for artist %s", len(cachedTracks), artistId)
-			return TracksUpdatedMsg{
-				Err: nil,
-			}
+			return TracksUpdatedMsg{}
 		}
 
 		topTracks, err := s.client.GetArtistsTopTracks(context.TODO(), artistId, "US")
 		if err != nil {
-			log.Printf("SpotifyState: Error fetching top tracks: %v", err)
-			return TracksUpdatedMsg{
-				Err: err,
+			log.Printf("SpotifyState: Error fetching top tracks for artist %s: %v", artistId, err)
+			return ErrorMsg{
+				Title:   fmt.Sprintf("Failed to Fetch Top Tracks for Artist %s", artistId),
+				Message: err.Error(),
 			}
 		}
 
@@ -55,8 +55,6 @@ func (s *SpotifyState) FetchTopTracks(artistId spotify.ID) tea.Cmd {
 		s.mu.Unlock()
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d top tracks for artist %s", len(simpleTracks), artistId)
-		return TracksUpdatedMsg{
-			Err: nil,
-		}
+		return TracksUpdatedMsg{}
 	}
 }

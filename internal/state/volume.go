@@ -10,7 +10,6 @@ import (
 // IncreaseVolume increases the volume by 10%
 func (s *SpotifyState) IncreaseVolume() tea.Cmd {
 	return func() tea.Msg {
-		// Get current volume from player state
 		s.mu.RLock()
 		currentVolume := s.playerState.Device.Volume
 		s.mu.RUnlock()
@@ -21,29 +20,26 @@ func (s *SpotifyState) IncreaseVolume() tea.Cmd {
 			newVolume = 100
 		}
 
-		// Set the new volume
 		err := s.client.Volume(context.TODO(), int(newVolume))
 		if err != nil {
 			log.Printf("SpotifyState: Error increasing volume: %v", err)
-			return nil
+			return ErrorMsg{
+				Title:   "Failed to Increase Volume",
+				Message: err.Error(),
+			}
 		}
 
-		// Update local state
 		s.mu.Lock()
 		s.playerState.Device.Volume = newVolume
 		s.mu.Unlock()
 
-		// Return updated player state
-		return PlayerStateUpdatedMsg{
-			Err: nil,
-		}
+		return PlayerStateUpdatedMsg{}
 	}
 }
 
 // DecreaseVolume decreases the volume by 10%
 func (s *SpotifyState) DecreaseVolume() tea.Cmd {
 	return func() tea.Msg {
-		// Get current volume from player state
 		s.mu.RLock()
 		currentVolume := s.playerState.Device.Volume
 		s.mu.RUnlock()
@@ -54,21 +50,19 @@ func (s *SpotifyState) DecreaseVolume() tea.Cmd {
 			newVolume = 0
 		}
 
-		// Set the new volume
 		err := s.client.Volume(context.TODO(), int(newVolume))
 		if err != nil {
 			log.Printf("SpotifyState: Error decreasing volume: %v", err)
-			return nil
+			return ErrorMsg{
+				Title:   "Failed to Decrease Volume",
+				Message: err.Error(),
+			}
 		}
 
-		// Update local state
 		s.mu.Lock()
 		s.playerState.Device.Volume = newVolume
 		s.mu.Unlock()
 
-		// Return updated player state
-		return PlayerStateUpdatedMsg{
-			Err: nil,
-		}
+		return PlayerStateUpdatedMsg{}
 	}
 }

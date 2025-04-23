@@ -83,21 +83,9 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateListStyles(listWidth)
 
 	case state.SearchResultsUpdatedMsg:
-		// When search results are updated, update the view
-		if msg.Err == nil {
-			// Update the search results in the view
-			m.UpdateSearchResults()
-		} else {
-			log.Printf("Search view received error in search results: %v", msg.Err)
-			return m, ShowErrorToast(
-				"Error loading search results",
-				msg.Err.Error(),
-			)
-
-		}
+		m.UpdateSearchResults()
 
 	case tea.KeyMsg:
-		// Handle key messages based on which list is active
 		var cmd tea.Cmd
 		// Update only the active list based on the current focus
 		switch m.activeList {

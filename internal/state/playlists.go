@@ -16,16 +16,18 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 		log.Printf("SpotifyState: Executing FetchPlaylists, client: %v", s.client != nil)
 		if s.client == nil {
 			log.Printf("SpotifyState: Error - client is nil")
-			return PlaylistsUpdatedMsg{
-				Err: fmt.Errorf("spotify client not initialized"),
+			return ErrorMsg{
+				Title:   "Spotify Client Error",
+				Message: "Spotify client not initialized",
 			}
 		}
 
 		playlists, err := s.client.CurrentUsersPlaylists(context.TODO())
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlists: %v", err)
-			return PlaylistsUpdatedMsg{
-				Err: err,
+			return ErrorMsg{
+				Title:   "Failed to Fetch Playlists",
+				Message: err.Error(),
 			}
 		}
 
@@ -34,9 +36,7 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 		s.mu.Unlock()
 
 		log.Printf("SpotifyState: Successfully fetched %d playlists", len(playlists.Playlists))
-		return PlaylistsUpdatedMsg{
-			Err: nil,
-		}
+		return PlaylistsUpdatedMsg{}
 	}
 }
 
@@ -46,8 +46,9 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 		log.Printf("SpotifyState: Fetching tracks for playlist: %s", playlistID)
 		if playlistID == "" {
 			log.Printf("SpotifyState: Invalid playlist ID")
-			return TracksUpdatedMsg{
-				Err: fmt.Errorf("invalid playlist ID"),
+			return ErrorMsg{
+				Title:   "Invalid Input",
+				Message: "Invalid playlist ID provided",
 			}
 		}
 
@@ -63,36 +64,37 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 			s.mu.Unlock()
 
 			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for playlist %s", len(cachedTracks), playlistID)
-			return TracksUpdatedMsg{
-				Err: nil,
-			}
+			return TracksUpdatedMsg{}
 		}
 
 		log.Printf("SpotifyState: No cache found, fetching from API for playlist %s", playlistID)
 		playlistItems, err := s.client.GetPlaylistItems(context.TODO(), spotify.ID(playlistID))
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlist items: %v", err)
-			return TracksUpdatedMsg{
-				Err: err,
+			return ErrorMsg{
+				Title:   fmt.Sprintf("Failed to Fetch Tracks for Playlist %s", playlistID),
+				Message: err.Error(),
 			}
 		}
 
 		allTracks := playlistItems.Items
 
-		for page := 1; ; page++ {
+		page := 1
+		for {
 			log.Printf("SpotifyState: Fetching page %d of playlist items", page)
 			err = s.client.NextPage(context.TODO(), playlistItems)
 			if err == spotify.ErrNoMorePages {
 				break
 			}
 			if err != nil {
-				log.Println("SpotifyState: Error fetching next page of playlist items:", err)
+				log.Printf("SpotifyState: Error fetching next page of playlist items: %v", err)
 				break
 			}
 
 			allTracks = append(allTracks, playlistItems.Items...)
+			page++
 		}
-		log.Println("SpotifyState: Found", len(allTracks), "tracks")
+		log.Printf("SpotifyState: Found %d tracks in total for playlist %s", len(allTracks), playlistID)
 
 		simpleTracks := make([]spotify.SimpleTrack, 0, len(allTracks))
 		for _, item := range allTracks {
@@ -110,20 +112,23 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for playlist %s", len(simpleTracks), playlistID)
 
-		return TracksUpdatedMsg{
-			Err: nil,
-		}
+		return TracksUpdatedMsg{}
 	}
 }
 
 func (s *SpotifyState) SelectPlaylist(playlistID string) tea.Cmd {
 	return func() tea.Msg {
-		playlistID = strings.Split(playlistID, ":")[2]
+		if !strings.HasPrefix(playlistID, "spotify:playlist:") {
+			log.Printf("SpotifyState: Invalid playlist ID format: %s", playlistID)
+		} else {
+			playlistID = strings.Split(playlistID, ":")[2]
+		}
 
 		s.mu.Lock()
 		s.selectedID = spotify.ID(playlistID)
 		s.mu.Unlock()
 
+		log.Printf("SpotifyState: Selected playlist ID: %s", playlistID)
 		return PlaylistSelectedMsg{
 			PlaylistID: playlistID,
 		}

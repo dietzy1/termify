@@ -30,10 +30,10 @@ func (m playbackControlsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case state.PlayerStateUpdatedMsg:
 		log.Println("Playback controls recieved player state update")
-		if msg.Err != nil {
+		/* if msg.Err != nil {
 			log.Println("Error updating player state")
 			return m, ShowErrorToast("Error updating player state", "Illegal action")
-		}
+		} */
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -148,14 +148,6 @@ func (m applicationModel) renderPlaybackSection() string {
 		device,
 		volumeControlView,
 	)
-
-	/* containerStyle := lipgloss.NewStyle().
-		Width(28).
-		Align(lipgloss.Right)
-
-	if m.width < SHRINKWIDTH {
-		containerStyle = containerStyle.Width(20)
-	} */
 
 	return combinedPlaybackSectionStyle.Render(
 		lipgloss.JoinHorizontal(lipgloss.Bottom,

@@ -7,8 +7,12 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+type ErrorMsg struct {
+	Title   string
+	Message string
+}
+
 type PlaylistsUpdatedMsg struct {
-	Err error
 }
 
 type PlaylistSelectedMsg struct {
@@ -16,11 +20,9 @@ type PlaylistSelectedMsg struct {
 }
 
 type TracksUpdatedMsg struct {
-	Err error
 }
 
 type PlayerStateUpdatedMsg struct {
-	Err error
 }
 
 //TODO: pass a context into all the API functions like a human its fine if its a shared context from the TUI I think
