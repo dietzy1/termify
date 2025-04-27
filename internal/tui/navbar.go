@@ -20,6 +20,7 @@ var _ tea.Model = (*navbarModel)(nil)
 
 type navbarModel struct {
 	width, height int
+	queueCount    int
 }
 
 func newNavbar() navbarModel {
@@ -36,7 +37,6 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 	}
-
 	return m, nil
 }
 
@@ -58,7 +58,7 @@ func (m navbarModel) View() string {
 		lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
 			MarginLeft(1).
-			Render(fmt.Sprintf("View Queue (%d)", 1)),
+			Render(fmt.Sprintf("View Queue (%d)", m.queueCount)),
 	)
 
 	var paddingTop = 0
