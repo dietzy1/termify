@@ -27,6 +27,7 @@ type applicationModel struct {
 	searchBar       searchbarModel
 	playlistView    playlistViewModel
 	searchView      searchViewModel
+	queueView       queueModel
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
 	deviceSelector  deviceSelectorModel
@@ -57,10 +58,11 @@ func newApplication(client *spotify.Client) applicationModel {
 		searchBar:       newSearchbar(spotifyState),
 		playlistView:    newPlaylistView(spotifyState),
 		searchView:      newSearchView(spotifyState),
+		queueView:       newQueue(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(spotifyState),
 		deviceSelector:  NewDeviceSelector(spotifyState),
-		errorToast:      newErrorToast(), // Initialize the new model
+		errorToast:      newErrorToast(),
 		activeViewport:  MainView,
 	}
 }
@@ -69,6 +71,15 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case state.QueueUpdatedMsg:
+		if updatedQueueView, cmd, ok := updateSubmodel(m.queueView, msg,
+			m.queueView); ok {
+			m.queueView = updatedQueueView
+			cmds = append(cmds, cmd)
+		}
+		queueCount := m.spotifyState.GetQueue()
+		m.navbar.queueCount = len(queueCount)
+
 	case AutoplayNextTrackMsg:
 		return m.handleAutoplay()
 
@@ -196,8 +207,6 @@ type viewport int
 const (
 	// Normal view
 	MainView viewport = iota
-	// Queue view
-	QueueView
 	// Help view
 	HelpView
 )
@@ -206,11 +215,8 @@ func (m applicationModel) View() string {
 
 	var viewportContent string
 	switch m.activeViewport {
-	case QueueView:
-		viewportContent = "queue"
 	case HelpView:
 		viewportContent = m.renderHelp()
-
 	case MainView:
 		viewportContent = m.viewMain()
 	}
@@ -219,10 +225,8 @@ func (m applicationModel) View() string {
 
 	var navContent []string
 	navContent = append(navContent, m.navbar.View())
-	// errorBar := m.renderErrorBar()
-	errorToastView := m.errorToast.View() // Get view from the new model
+	errorToastView := m.errorToast.View()
 	if errorToastView != "" {
-		// navContent = append(navContent, errorBar)
 		navContent = append(navContent, errorToastView)
 	}
 
@@ -241,6 +245,7 @@ func (m applicationModel) viewMain() string {
 	m.library.isFocused = m.focusedModel == FocusLibrary
 	m.searchBar.isFocused = m.focusedModel == FocusSearchBar
 	m.playlistView.isFocused = m.focusedModel == FocusPlaylistView
+	m.queueView.isFocused = m.focusedModel == FocusQueue
 
 	// Set search view focus state
 	m.searchView.isFocused = m.isSearchViewFocus()
@@ -259,6 +264,10 @@ func (m applicationModel) viewMain() string {
 	}
 
 	library := m.library.View()
+	queue := ""
+	if m.focusedModel == FocusQueue {
+		queue = m.queueView.View()
+	}
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
@@ -268,6 +277,7 @@ func (m applicationModel) viewMain() string {
 			m.searchBar.View(),
 			viewport,
 		),
+		queue,
 	)
 
 }
@@ -319,7 +329,13 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	}
 
 	libraryWidth := lipgloss.Width(m.library.View()) // Get current library width after potential update
-	mainContentViewWidth := msg.Width - libraryWidth
+
+	queueWidth := 0
+	if m.focusedModel == FocusQueue {
+		queueWidth = lipgloss.Width(m.library.View())
+	}
+
+	mainContentViewWidth := msg.Width - libraryWidth - queueWidth
 
 	if updatedSearchBar, cmd, ok := updateSubmodel(m.searchBar, tea.WindowSizeMsg{
 		Width: mainContentViewWidth,
@@ -344,6 +360,13 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		Height: mainViewportContentHeight,
 	}, m.searchView); ok {
 		m.searchView = updatedSearchView
+		cmds = append(cmds, cmd)
+	}
+
+	if updatedQueueView, cmd, ok := updateSubmodel(m.queueView, tea.WindowSizeMsg{
+		Height: viewportHeight,
+	}, m.queueView); ok {
+		m.queueView = updatedQueueView
 		cmds = append(cmds, cmd)
 	}
 

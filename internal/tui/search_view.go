@@ -127,7 +127,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					//We somehow need to pass along that we opened a playlist called XX
 
 					// Use helper function for cleaner code
-					return m, NavigateToPlaylistView(playlistID, playlistView)
+					return m, navigateToPlaylistView(playlistID, playlistView)
 				}
 			}
 
@@ -144,7 +144,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.spotifyState.SetSelectedID(artistID)
 
 					// Use helper function
-					return m, NavigateToPlaylistView(artistID, artistTopTracksView)
+					return m, navigateToPlaylistView(artistID, artistTopTracksView)
 				}
 			}
 
@@ -161,7 +161,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					log.Println("Opening album view for: ", albumID)
 					m.spotifyState.SetSelectedID(albumID)
 					// Use helper function
-					return m, NavigateToPlaylistView(albumID, albumTracksView)
+					return m, navigateToPlaylistView(albumID, albumTracksView)
 				}
 			}
 		}

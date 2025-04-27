@@ -76,15 +76,10 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
-		m.list.SetHeight(m.height - 2)
+		m.list.SetHeight(m.height - 3)
 		return m, nil
 
 	case state.PlaylistsUpdatedMsg:
-		/* if msg.Err != nil {
-			log.Printf("Library: Error updating playlists: %v", msg.Err)
-			return m, ShowErrorToast("Error loading playlists", fmt.Sprintf("Error loading playlists: %v", msg.Err))
-		} */
-
 		m.list.SetItems(m.convertPlaylistsToItems())
 		return m, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri))
 

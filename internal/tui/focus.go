@@ -13,14 +13,13 @@ type FocusedModel int
 const (
 	FocusLibrary FocusedModel = iota
 	FocusSearchBar
-
 	FocusPlaylistView
 	FocusSearchTracksView
 	FocusSearchPlaylistsView
 	FocusSearchArtistsView
 	FocusSearchAlbumsView
-
 	FocusDeviceSelector
+	FocusQueue
 )
 
 func (m applicationModel) isSearchViewFocus() bool {
@@ -65,9 +64,6 @@ func (m *applicationModel) cycleSearchViewsBackward() {
 		m.focusedModel = FocusSearchTracksView
 	}
 }
-
-// I think I lack a prober case of going from FocusPlaylistView to library when playlistView was redirected from search mode
-// A similar issue exists for pressing esc when in FocusPlaylistView
 
 func (m *applicationModel) cycleFocus() tea.Cmd {
 	switch m.focusedModel {
@@ -122,67 +118,70 @@ func (m *applicationModel) cycleFocusBackward() tea.Cmd {
 
 func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
 	var cmd tea.Cmd
-
 	log.Println("Handling global key:", msg)
 
-	// These keys should always work
+	// Global quit
 	switch {
 	case key.Matches(msg, DefaultKeyMap.Quit):
 		return m, tea.Quit, true
-	case key.Matches(msg, DefaultKeyMap.Help):
-
-		if m.activeViewport == HelpView {
-			m.activeViewport = MainView
-		} else {
-			m.activeViewport = HelpView
-		}
-
-		return m, nil, true
 	}
 
-	// If we're in help mode, check for Return key to exit help
-	if m.activeViewport == HelpView {
-		if key.Matches(msg, DefaultKeyMap.Return) {
-			m.activeViewport = MainView
-			m.deviceSelector.Blur()
-			return m, nil, true
-		}
-		// Let other keys pass through when in help mode
-		return m, nil, false
-	}
-
-	// Handle other global keys
+	// All return key cases
 	switch {
-	case key.Matches(msg, DefaultKeyMap.Search):
-		// Toggle search mode
-		if m.searchBar.searching {
-			if m.isSearchViewFocus() {
-				return m, NavigateToSearch(), true
-			}
-		} else {
-			return m, NavigateToSearch(), true
-		}
-	case key.Matches(msg, DefaultKeyMap.Device):
-		m.focusedModel = FocusDeviceSelector
-		m.deviceSelector.Focus()
-		return m, nil, true
-
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
 		m.searchBar.ExitSearchMode()
 		m.deviceSelector.Blur()
-		return m, NavigateToLibrary(), true
+
+		return m, tea.Sequence(
+			navigateToLibrary(),
+			tea.WindowSize(),
+		), true
+
+	case key.Matches(msg, DefaultKeyMap.Return) && m.activeViewport == HelpView:
+		m.activeViewport = MainView
+		m.deviceSelector.Blur()
+		return m, nil, false
+
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
 		m.searchBar.ExitSearchMode()
 		m.deviceSelector.Blur()
 
-		return m, tea.Batch(
+		return m, tea.Sequence(
 			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
-			NavigateToLibrary(),
+			navigateToLibrary(),
+			tea.WindowSize(),
 		), true
 	}
 
-	if m.searchBar.searching {
+	if m.searchBar.searching && m.focusedModel == FocusSearchBar {
+		//Redirect all remaining keys while searching
 		return m, cmd, false
+	}
+
+	// Global view changers
+	switch {
+	case key.Matches(msg, DefaultKeyMap.Search):
+		return m, tea.Batch(
+			navigateToSearch(),
+			tea.WindowSize(),
+		), true
+
+	case key.Matches(msg, DefaultKeyMap.Help):
+		m.toggleHelpView()
+		return m, nil, true
+
+	case key.Matches(msg, DefaultKeyMap.ViewQueue):
+		m.activeViewport = MainView
+		m.focusedModel = FocusQueue
+		return m, tea.Batch(
+			tea.WindowSize(),
+			m.spotifyState.FetchQueue(),
+		), true
+
+	case key.Matches(msg, DefaultKeyMap.Device):
+		m.focusedModel = FocusDeviceSelector
+		m.deviceSelector.Focus()
+		return m, tea.WindowSize(), true
 	}
 
 	//Playback controls globals
@@ -240,9 +239,22 @@ func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 		deviceSelector, cmd := m.deviceSelector.Update(msg)
 		m.deviceSelector = deviceSelector.(deviceSelectorModel)
 		cmds = append(cmds, cmd)
+
+	case FocusQueue:
+		queue, cmd := m.queueView.Update(msg)
+		m.queueView = queue.(queueModel)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m *applicationModel) toggleHelpView() {
+	if m.activeViewport == HelpView {
+		m.activeViewport = MainView
+	} else {
+		m.activeViewport = HelpView
+	}
 }
 
 // Helper function to get border style based on focus state
