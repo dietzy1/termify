@@ -16,6 +16,8 @@ import (
 // Have a clear button // Requires queue redesign since no API support
 // Ability to play next songs by pressing select
 
+var _ tea.Model = (*queueModel)(nil)
+
 type queueItem struct {
 	title string
 	desc  string

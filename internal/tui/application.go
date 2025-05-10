@@ -19,11 +19,9 @@ type applicationModel struct {
 	focusedModel   FocusedModel
 	activeViewport viewport
 
-	// errorBar state.ErrorMsg // THIS ONE NEEDS TO BE CHANGED TO the standalone error model
-	errorToast errorToastModel // Changed from errorBar
-	navbar     navbarModel
-	library    libraryModel
-
+	errorToast      errorToastModel
+	navbar          navbarModel
+	library         libraryModel
 	searchBar       searchbarModel
 	playlistView    playlistViewModel
 	searchView      searchViewModel
@@ -47,6 +45,7 @@ func (m applicationModel) Init() tea.Cmd {
 }
 
 func newApplication(client *spotify.Client) applicationModel {
+
 	spotifyState := state.NewSpotifyState(client)
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
@@ -205,9 +204,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 type viewport int
 
 const (
-	// Normal view
 	MainView viewport = iota
-	// Help view
 	HelpView
 )
 
@@ -279,16 +276,13 @@ func (m applicationModel) viewMain() string {
 		),
 		queue,
 	)
-
 }
 
 func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicationModel, tea.Cmd) {
 	var cmds []tea.Cmd
-	//var cmd tea.Cmd // Declare cmd here
 	m.width = msg.Width
 	m.height = msg.Height
 
-	// Update errorToast model first as its height might be needed
 	if updatedErrorToast, cmd, ok := updateSubmodel(m.errorToast, tea.WindowSizeMsg{
 		Width: msg.Width,
 	}, m.errorToast); ok {
@@ -296,9 +290,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	errorHeight := m.errorToast.Height() // Use the helper method
-	log.Println("Error height:", errorHeight)
-
+	errorHeight := m.errorToast.Height()
 	const SHRINKHEIGHT = 40
 	var navbarHeight = 1
 	if m.height > SHRINKHEIGHT {
@@ -313,11 +305,8 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	// Calculate remaining height for main viewports
-	// Parent height - navbar height - error toast height - playback controls height - audio player height - navigation help height
-	// Assuming navigationHelp height is constant (e.g., 1 line)
-	playbackSectionHeight := lipgloss.Height(m.renderPlaybackSection()) // Calculate combined height
-	navHelpHeight := 1                                                  // Assuming 1 line for navigation help
+	playbackSectionHeight := lipgloss.Height(m.renderPlaybackSection())
+	navHelpHeight := 1
 
 	viewportHeight := msg.Height - navbarHeight - errorHeight - playbackSectionHeight - navHelpHeight
 
@@ -328,7 +317,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	libraryWidth := lipgloss.Width(m.library.View()) // Get current library width after potential update
+	libraryWidth := lipgloss.Width(m.library.View())
 
 	queueWidth := 0
 	if m.focusedModel == FocusQueue {
@@ -344,7 +333,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	searchBarHeight := lipgloss.Height(m.searchBar.View()) // Get search bar height
+	searchBarHeight := lipgloss.Height(m.searchBar.View())
 	mainViewportContentHeight := viewportHeight - searchBarHeight
 
 	if updatedPlaylistView, cmd, ok := updateSubmodel(m.playlistView, tea.WindowSizeMsg{
@@ -370,7 +359,6 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 		cmds = append(cmds, cmd)
 	}
 
-	// Playback controls and audio player width usually span the full width
 	if updatedPlaybackControl, cmd, ok := updateSubmodel(m.playbackControl, tea.WindowSizeMsg{
 		Width: msg.Width,
 	}, m.playbackControl); ok {

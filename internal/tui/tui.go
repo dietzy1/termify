@@ -5,12 +5,35 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietzy1/termify/internal/authentication"
+	"github.com/dietzy1/termify/internal/config"
 	"github.com/zmb3/spotify/v2"
 )
 
+type authenticator interface {
+	StartPkceAuth(ctx context.Context, clientID string) tea.Cmd
+	StartStoredTokenAuth(ctx context.Context) tea.Cmd
+	SetTeaProgram(p *tea.Program)
+}
+
 var _ tea.Model = (*model)(nil)
+
+type tuiState int
+
+const (
+	authenticating tuiState = iota
+	application
+)
+
+type model struct {
+	width, height int
+	state         tuiState
+
+	authModel        authModel
+	applicationModel applicationModel
+}
 
 func (m model) Init() tea.Cmd {
 	switch m.state {
@@ -28,43 +51,20 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-type appState int
-
-const (
-	authenticating appState = iota
-	application
-)
-
-type model struct {
-	width, height int
-	state         appState
-
-	authModel        authModel
-	applicationModel applicationModel
-}
-
-// Config holds the TUI configuration
-type Config struct {
-	Ctx         context.Context
-	AuthService authentication.Service
-}
-
-func Run(cfg Config) error {
-	if cfg.Ctx == nil {
-		return fmt.Errorf("context is required")
-	}
+func Run(ctx context.Context, c *config.Config, authenticator authenticator) error {
 
 	m := model{
 		state:            authenticating,
-		authModel:        newAuthModel(cfg.AuthService),
+		authModel:        newAuthModel(c, authenticator),
 		applicationModel: newApplication(nil),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
+	authenticator.SetTeaProgram(p)
 
 	// Handle context cancellation
 	go func() {
-		<-cfg.Ctx.Done()
+		<-ctx.Done()
 		p.Quit()
 	}()
 
@@ -86,13 +86,34 @@ func transitionToApplication(m model, spotifyClient *spotify.Client) model {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	switch msg := msg.(type) {
+	case authentication.LoginClientMsg:
+		log.Printf("Parent model (tui.go): Received LoginClientMsg. Transitioning to application state. Client valid: %v", msg.Client != nil)
+		if msg.Client == nil {
+			log.Println("Parent model (tui.go): LoginClientMsg has a nil client. Authentication might have failed silently earlier or an error message was missed.")
+		}
+		updatedModel := transitionToApplication(m, msg.Client)
+		return updatedModel, updatedModel.Init()
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Quit):
+			return m, tea.Quit
+		}
+	}
+
 	switch m.state {
 	case authenticating:
-		log.Printf("Updating authentication model with message type: %T", msg)
-		return m.updateAuth(msg)
+		if updatedAuth, cmd, ok := updateSubmodel(m.authModel, msg, m.authModel); ok {
+			m.authModel = updatedAuth
+			return m, cmd
+		}
+
 	case application:
-		log.Printf("Updating application model with message type: %T", msg)
-		return m.applicationModel.Update(msg)
+		if updatedApplication, cmd, ok := updateSubmodel(m.applicationModel, msg, m.applicationModel); ok {
+			m.applicationModel = updatedApplication
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -100,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	switch m.state {
 	case authenticating:
-		return m.viewAuth()
+		return m.authModel.View()
 	case application:
 		return m.applicationModel.View()
 	}

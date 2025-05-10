@@ -35,7 +35,7 @@ type Config struct {
 }
 
 // DefaultConfig returns a config with default values
-func DefaultConfig() *Config {
+func defaultConfig() *Config {
 	cfg := &Config{}
 
 	// Set default values
@@ -49,7 +49,7 @@ func DefaultConfig() *Config {
 // LoadConfig loads configuration from file, environment variables, and command-line flags
 func LoadConfig() (*Config, error) {
 	// Start with default configuration
-	cfg := DefaultConfig()
+	cfg := defaultConfig()
 
 	// Define and parse command-line flags
 	var (

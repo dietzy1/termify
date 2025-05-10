@@ -120,12 +120,6 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	var cmd tea.Cmd
 	log.Println("Handling global key:", msg)
 
-	// Global quit
-	switch {
-	case key.Matches(msg, DefaultKeyMap.Quit):
-		return m, tea.Quit, true
-	}
-
 	// All return key cases
 	switch {
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:

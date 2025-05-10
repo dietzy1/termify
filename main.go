@@ -22,32 +22,32 @@ func main() {
 	defer f.Close()
 
 	// Load configuration
-	appConfig, err := config.LoadConfig()
+	config, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Create the auth service with config
-	authService, err := authentication.NewService(authentication.ServiceConfig{
-		AppConfig: appConfig,
-	})
+	// Setup authentication service client
+	authService, err := authentication.NewService(config)
 	if err != nil {
 		log.Fatalf("Failed to create auth service: %v", err)
 	}
 
+	// Setup authentication server
+	authServer := authentication.NewServer(config, authService)
+	if err != nil {
+		log.Fatalf("Failed to create authentication server: %v", err)
+	}
+
 	go func() {
-		if err := authService.Start(ctx); err != nil && ctx.Err() == nil {
+		if err := authServer.ListenAndServe(ctx); err != nil && ctx.Err() == nil {
 			log.Printf("Server error: %v", err)
 			cancel()
 		}
 	}()
 
 	// Run TUI - this will block until TUI exits
-	if err := tui.Run(tui.Config{
-		Ctx:         ctx,
-		AuthService: authService,
-	}); err != nil {
+	if err := tui.Run(ctx, config, authService); err != nil {
 		log.Printf("TUI error: %v", err)
 	}
-
 }

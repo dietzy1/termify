@@ -12,9 +12,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/authentication"
+	"github.com/dietzy1/termify/internal/config"
 	"github.com/pkg/browser"
-	"github.com/zmb3/spotify/v2"
 )
+
+var _ tea.Model = (*authModel)(nil)
 
 // Message types for authentication flow
 type authState int
@@ -22,20 +24,20 @@ type authState int
 const (
 	stateAwaitingClientID authState = iota
 	stateAwaitingLogin
-	stateAuthComplete
 )
 
 type authModel struct {
-	input    textinput.Model
-	auth     authentication.Service
-	state    authState
-	err      error
-	loginURL string
-	authChan <-chan authentication.AuthResult
-	copied   bool
+	width, height int
+	input         textinput.Model
+	state         authState
+	err           error
+	loginURL      string
+	copied        bool
+	config        *config.Config
+	authenticator authenticator
 }
 
-func newAuthModel(auth authentication.Service) authModel {
+func newAuthModel(c *config.Config, authenticator authenticator) authModel {
 	textInput := textinput.New()
 	textInput.Placeholder = "Enter your Spotify Client ID"
 	textInput.Focus()
@@ -43,24 +45,16 @@ func newAuthModel(auth authentication.Service) authModel {
 	textInput.Width = 40
 
 	return authModel{
-		auth:     auth,
-		input:    textInput,
-		state:    stateAwaitingClientID,
-		err:      nil,
-		loginURL: "",
-		authChan: nil,
-		copied:   false,
+		input:         textInput,
+		state:         stateAwaitingClientID,
+		err:           nil,
+		loginURL:      "",
+		copied:        false,
+		config:        c,
+		authenticator: authenticator,
 	}
 }
 
-// AuthChannelMsg represents a message from the auth channel
-type AuthChannelMsg struct {
-	LoginURL string
-	Client   *spotify.Client
-	Error    error
-}
-
-// Message type for resetting copy state
 type resetCopyMsg struct{}
 
 // Command to reset copy state after a delay
@@ -70,80 +64,9 @@ func resetCopyAfterDelay() tea.Cmd {
 	})
 }
 
-// waitForAuth returns a command that listens to the auth channel
-func waitForAuth(authChan <-chan authentication.AuthResult) tea.Cmd {
-	return func() tea.Msg {
-		log.Println("Waiting for auth result from channel...")
-		result, ok := <-authChan
-		if !ok {
-			log.Println("Auth channel closed without receiving any result")
-			// Return an empty AuthChannelMsg to avoid blocking
-			return AuthChannelMsg{}
-		}
-
-		log.Println("Received auth result:", result)
-
-		// If we got a login URL, we need to continue waiting for the client
-		if result.LoginURL != "" && result.Client == nil && result.Error == nil {
-			log.Println("Auth result contains only a login URL, returning it and continuing to wait")
-			// Return the login URL message but also set up a command to continue waiting
-			return tea.Batch(
-				func() tea.Msg {
-					return AuthChannelMsg{
-						LoginURL: result.LoginURL,
-					}
-				},
-				waitForNextAuthResult(authChan),
-			)()
-		}
-
-		// Otherwise, return the result as is
-		if result.Client != nil {
-			log.Println("Auth result contains a client")
-		}
-		if result.Error != nil {
-			log.Println("Auth result contains an error:", result.Error)
-		}
-
-		return AuthChannelMsg{
-			LoginURL: result.LoginURL,
-			Client:   result.Client,
-			Error:    result.Error,
-		}
-	}
-}
-
-// waitForNextAuthResult continues waiting for the next message from the auth channel
-func waitForNextAuthResult(authChan <-chan authentication.AuthResult) tea.Cmd {
-	return func() tea.Msg {
-		log.Println("Continuing to wait for auth result...")
-		result, ok := <-authChan
-		if !ok {
-			log.Println("Auth channel closed without receiving client or error")
-			// Return an empty AuthChannelMsg to avoid blocking
-			return AuthChannelMsg{}
-		}
-
-		log.Println("Received next auth result:", result)
-		if result.Client != nil {
-			log.Println("Auth result contains a client")
-		}
-		if result.Error != nil {
-			log.Println("Auth result contains an error:", result.Error)
-		}
-
-		return AuthChannelMsg{
-			LoginURL: result.LoginURL,
-			Client:   result.Client,
-			Error:    result.Error,
-		}
-	}
-}
-
 var errClientID = fmt.Errorf("client ID must be 32 characters")
 
-// TODO: I think this should be refactored into using m authModel - For consistency issues
-func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -153,87 +76,50 @@ func (m model) updateAuth(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case resetCopyMsg:
-		m.authModel.copied = false
+		m.copied = false
 		return m, nil
-	case AuthChannelMsg:
-		log.Printf("Processing AuthChannelMsg: Error=%v, Client=%v, LoginURL=%v",
-			msg.Error != nil,
-			msg.Client != nil,
-			msg.LoginURL != "")
-		if msg.Error != nil {
-			log.Printf("Authentication error: %v", msg.Error)
-			m.authModel.err = msg.Error
-			m.authModel.state = stateAwaitingClientID
-			return m, nil
+
+	case authentication.LoginUrlMsg:
+		log.Printf("Received login URL: %s", msg.Url)
+		if err := browser.OpenURL(msg.Url); err != nil {
+			log.Fatal(err)
 		}
-		if msg.Client != nil {
-			log.Printf("Authentication successful, transitioning to application")
-			m.authModel.state = stateAuthComplete
-			m = transitionToApplication(m, msg.Client)
-			return m, m.Init()
-		}
-		if msg.LoginURL != "" {
-			if err := browser.OpenURL(msg.LoginURL); err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("Received login URL: %s", msg.LoginURL)
-			m.authModel.loginURL = msg.LoginURL
-
-			// If we're already in the StateAwaitingLogin state, we don't need to set up another waitForAuth command
-			// This happens when we're using a stored client ID and we've already set up the waitForAuth command in Init()
-			alreadyWaiting := m.authModel.state == stateAwaitingLogin
-
-			m.authModel.state = stateAwaitingLogin
-			m.authModel.copied = false // Reset copied state when showing new URL
-
-			if alreadyWaiting {
-				log.Println("Already in StateAwaitingLogin, not setting up another waitForAuth command")
-				return m, nil
-			}
-
-			log.Println("Setting up waitForAuth command")
-			return m, waitForAuth(m.authModel.authChan)
-		}
-
-		log.Printf("AuthChannelMsg didn't match any condition, no action taken")
-		return m, nil
+		m.loginURL = msg.Url
+		m.state = stateAwaitingLogin
+		m.copied = false
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Quit):
-			return m, tea.Quit
-
 		case key.Matches(msg, DefaultKeyMap.Select):
-			if m.authModel.state == stateAwaitingClientID {
-				clientID := m.authModel.input.Value()
+			if m.state == stateAwaitingClientID {
+				clientID := m.input.Value()
 				if len(clientID) != 32 {
-					m.authModel.err = errClientID
+					m.err = errClientID
 					return m, nil
 				}
-				m.authModel.err = nil
-				// Store the auth channel and start listening
-				m.authModel.authChan = m.authModel.auth.StartAuth(context.Background(), clientID)
-				return m, waitForAuth(m.authModel.authChan)
+				m.err = nil
+				return m, m.authenticator.StartPkceAuth(context.TODO(), clientID)
+
 			}
 		case key.Matches(msg, DefaultKeyMap.Copy):
-			if m.authModel.state == stateAwaitingLogin && msg.String() == "c" {
-				if err := clipboard.WriteAll(m.authModel.loginURL); err != nil {
+			if m.state == stateAwaitingLogin && msg.String() == "c" {
+				if err := clipboard.WriteAll(m.loginURL); err != nil {
 					log.Printf("Failed to copy to clipboard: %v", err)
 					return m, nil
 				}
-				m.authModel.copied = true
+				m.copied = true
 				return m, resetCopyAfterDelay()
 			}
 		}
 	}
 	// Handle text input updates only if we're awaiting client ID
-	if m.authModel.state == stateAwaitingClientID {
-		m.authModel.input, cmd = m.authModel.input.Update(msg)
+	if m.state == stateAwaitingClientID {
+		m.input, cmd = m.input.Update(msg)
 	}
 	return m, cmd
 }
 
-func (m model) viewAuth() string {
+func (m authModel) View() string {
 	containerStyle := lipgloss.NewStyle().
 		Align(lipgloss.Center, lipgloss.Center).
 		Width(m.width).
@@ -245,7 +131,7 @@ func (m model) viewAuth() string {
 	// Create a box for the main content
 	boxStyle := lipgloss.NewStyle().
 		Padding(2).
-		Width(72). // Fixed width to ensure consistent alignment
+		Width(72).
 		Align(lipgloss.Center)
 
 	inputStyle := lipgloss.NewStyle().
@@ -253,9 +139,6 @@ func (m model) viewAuth() string {
 		BorderForeground(lipgloss.Color(BorderColor)).
 		Padding(1, 2).
 		Width(66)
-
-	textStyle := lipgloss.NewStyle().
-		PaddingBottom(1)
 
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(PrimaryColor)).
@@ -270,7 +153,7 @@ func (m model) viewAuth() string {
 
 	instructionStyle := lipgloss.NewStyle().
 		Foreground(WhiteTextColor).
-		Width(66). // Fixed width for instructions
+		Width(66).
 		MarginTop(1).
 		MarginBottom(1)
 
@@ -303,13 +186,13 @@ func (m model) viewAuth() string {
 		" to exit",
 	)
 
-	switch m.authModel.state {
+	switch m.state {
 	case stateAwaitingClientID:
 		instructions := []string{
 			"Getting started:",
 			"1. Visit https://developer.spotify.com/dashboard",
 			"2. Create a new application in your Spotify Developer Dashboard",
-			"3. Set the redirect URI to http://127.0.0.1:8080/callback",
+			fmt.Sprintf("3. Set the redirect URI to http://127.0.0.1%s/callback", m.config.Server.Port),
 			"4. Copy your Client ID from the dashboard",
 		}
 
@@ -341,16 +224,16 @@ func (m model) viewAuth() string {
 				),
 
 				errorStyle.Render(
-					safelyRenderError(m.authModel.err),
+					safelyRenderError(m.err),
 				),
-				inputStyle.Render(m.authModel.input.View()),
+				inputStyle.Render(m.input.View()),
 				keyHint,
 			)),
 		))
 
 	case stateAwaitingLogin:
 		statusText := "Press c to copy URL"
-		if m.authModel.copied {
+		if m.copied {
 			statusText = "✓ URL copied to clipboard!"
 		}
 
@@ -360,18 +243,9 @@ func (m model) viewAuth() string {
 			boxStyle.Render(lipgloss.JoinVertical(
 				lipgloss.Center,
 				instructionStyle.Render("Please visit this URL to login:"),
-				urlStyle.Render(m.authModel.loginURL),
+				urlStyle.Render(m.loginURL),
 				hintStyle.Render(statusText),
 			)),
-		))
-
-	case stateAuthComplete:
-		return containerStyle.Render(lipgloss.JoinVertical(
-			lipgloss.Center,
-			LogoStyle.Render(logo),
-			boxStyle.Render(
-				textStyle.Render("Authentication successful!"),
-			),
 		))
 
 	default:
@@ -385,21 +259,6 @@ func (m model) viewAuth() string {
 	}
 }
 
-// The change we need to make here is that it needs to check the credential manager for a stored client ID
-// If that exists then we can change the state to StateAwaitingLogin and start the auth process
-func (m *authModel) Init() tea.Cmd {
-	log.Println("Initializing authModel")
-	clientID := m.auth.GetClientID()
-	if clientID == "" {
-		log.Println("No stored client ID found, waiting for user input")
-		return nil
-	}
-	log.Printf("Found stored client ID: %s", clientID)
-	log.Println("Setting state to StateAwaitingLogin")
-	m.state = stateAwaitingLogin
-
-	log.Println("Starting auth with stored client ID")
-	m.authChan = m.auth.StartAuth(context.Background(), clientID)
-	log.Println("Returning waitForAuth command")
-	return waitForAuth(m.authChan)
+func (m authModel) Init() tea.Cmd {
+	return m.authenticator.StartStoredTokenAuth(context.TODO())
 }

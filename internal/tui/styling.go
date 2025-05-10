@@ -35,3 +35,6 @@ var RoundedTableBorders = table.Border{
 
 	InnerDivider: " ",
 }
+
+// https://github.com/charmbracelet/lipgloss/issues/209
+// Look into this in order to consistently change the color of background
