@@ -3,6 +3,7 @@ package authentication
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -19,19 +20,19 @@ type credentials struct {
 	Expiry       time.Time `json:"expiry"`
 }
 
-// CredentialManager handles the storage and retrieval of authentication credentials
+// CredentialManager handles the storage and retrieval of authentication credentials and client ID
 type credentialManager struct {
-	filePath string
-	mu       sync.RWMutex
+	configClientID string
+	configFilePath string
+	mu             sync.RWMutex
 }
 
-func NewCredentialManager(configDir string) (*credentialManager, error) {
-	if err := os.MkdirAll(configDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create config directory: %w", err)
-	}
+func NewCredentialManager(configClientID string, configDir string) (*credentialManager, error) {
 
 	return &credentialManager{
-		filePath: filepath.Join(configDir, "spotify_credentials.json"),
+		configClientID: configClientID,
+		configFilePath: filepath.Join(configDir, "spotify_credentials.json"),
+		mu:             sync.RWMutex{},
 	}, nil
 }
 
@@ -52,7 +53,7 @@ func (cm *credentialManager) saveToken(token *oauth2.Token) error {
 		return fmt.Errorf("failed to marshal credentials: %w", err)
 	}
 
-	if err := os.WriteFile(cm.filePath, data, 0600); err != nil {
+	if err := os.WriteFile(cm.configFilePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write credentials file: %w", err)
 	}
 
@@ -64,7 +65,7 @@ func (cm *credentialManager) loadToken() (*oauth2.Token, error) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
-	data, err := os.ReadFile(cm.filePath)
+	data, err := os.ReadFile(cm.configFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -89,7 +90,7 @@ func (cm *credentialManager) saveClientID(clientID string) error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
-	clientIDFilePath := filepath.Join(filepath.Dir(cm.filePath), "spotify_client_id.json")
+	clientIDFilePath := filepath.Join(filepath.Dir(cm.configFilePath), "spotify_client_id.json")
 
 	data, err := json.MarshalIndent(map[string]string{"client_id": clientID}, "", "  ")
 	if err != nil {
@@ -105,13 +106,15 @@ func (cm *credentialManager) saveClientID(clientID string) error {
 
 func (cm *credentialManager) loadClientID() (string, error) {
 
-	// We need to make changes so this function prioritizes loading clientID from config
-	// if that doesn't exist then it uses the token stored spotify_client_id.json
+	if cm.configClientID != "" {
+		log.Printf("Using client ID from config: %s", cm.configClientID)
+		return cm.configClientID, nil
+	}
 
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
-	clientIDFilePath := filepath.Join(filepath.Dir(cm.filePath), "spotify_client_id.json")
+	clientIDFilePath := filepath.Join(filepath.Dir(cm.configFilePath), "spotify_client_id.json")
 
 	data, err := os.ReadFile(clientIDFilePath)
 	if err != nil {
@@ -139,42 +142,9 @@ func (cm *credentialManager) clearToken() error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
-	if err := os.Remove(cm.filePath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(cm.configFilePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove credentials file: %w", err)
 	}
 
 	return nil
 }
-
-func getUserConfigDir(userDirPath string) (string, error) {
-	// First, check if a valid path was passed in
-	/* if userDirPath != "" {
-		// Check if the path exists or can be created
-		if _, err := os.Stat(userDirPath); err == nil {
-			// Path exists, use it
-			return userDirPath, nil
-		} else if os.IsNotExist(err) {
-			// Path doesn't exist, try to create it
-			if err := os.MkdirAll(userDirPath, 0755); err == nil {
-				return userDirPath, nil
-			}
-			// If creation fails, we'll fall back to the default path
-		}
-		// For any other error, we'll also fall back to the default path
-	} */
-
-	// Fall back to using home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	configDirPath := filepath.Join(homeDir, "termify")
-	if err := os.MkdirAll(configDirPath, 0755); err != nil {
-		return "", err
-	}
-
-	return configDirPath, nil
-}
-
-// beff5495d8fa419fb4040e4618e838d0

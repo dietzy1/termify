@@ -39,16 +39,9 @@ type service struct {
 // NewService creates a new authentication service
 func NewService(c *config.Config) (*service, error) {
 
-	configDirPath, err := getUserConfigDir(c.ConfigPath)
+	credManager, err := NewCredentialManager(c.GetClientID(), c.ConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find valid configuration directory for user due to: %w", err)
-	}
-
-	log.Println("Config directory path:", configDirPath)
-
-	credManager, err := NewCredentialManager(configDirPath)
-	if err != nil {
-		/* return nil, fmt.Errorf("failed to create credential manager: %w", err) */
+		return nil, fmt.Errorf("failed to create credential manager: %w", err)
 	}
 
 	s := &service{
@@ -68,7 +61,6 @@ func (s *service) SetTeaProgram(p *tea.Program) {
 }
 
 func (s *service) StartPkceAuth(ctx context.Context, clientID string) tea.Cmd {
-
 	log.Println("Token is invalid or not found, generating new URL")
 	url := s.generateUrl(clientID)
 	return func() tea.Msg {
@@ -78,6 +70,7 @@ func (s *service) StartPkceAuth(ctx context.Context, clientID string) tea.Cmd {
 
 // https://github.com/zmb3/spotify/issues/167
 func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
+
 	token, err := s.credManager.loadToken()
 	if err != nil {
 		log.Println("Failed to load token:", err)
@@ -86,20 +79,12 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 		}
 	}
 
-	log.Println("Loaded token:", token)
-
-	// We must also ensure that we have a valid clientID stored somewhere
-	// Either check in storage or use the one found in the config
-	/* clientID, err := s.credManager.loadClientID()
+	clientID, err := s.credManager.loadClientID()
 	if err != nil {
 		log.Println("Failed to load client ID:", err)
 		return nil
 	}
-	s.setAuthenticator(clientID) */
-
-	// We must beforehand ensure we have initialized the authenticator
-	s.setAuthenticator("beff5495d8fa419fb4040e4618e838d0")
-
+	s.setAuthenticator(clientID)
 	//TODO: We need to write some sort of intercepter for the oath2 token since it will be refreshed in the background.
 	// This means that our locally stored token will be invalidated on the spotify side and our local token is therefor out of sync and invalid.
 	// We must therefor ensure that on refresh then we also update the local token.
@@ -136,7 +121,13 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 	}
 	// If we reach here, the token is invalid or not found
 	log.Println("Token is invalid or not found")
-	return nil
+
+	// Generate a new URL for authentication
+	url := s.generateUrl(clientID)
+	log.Println("Generated URL:", url)
+	return func() tea.Msg {
+		return LoginUrlMsg{Url: url}
+	}
 }
 
 func (s *service) generateUrl(clientID string) string {
