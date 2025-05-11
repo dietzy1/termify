@@ -1,16 +1,19 @@
 # Termify - Spotify TUI Client
 
 ```
- ______              _ ___    
+ ______              _ ___
 /_  __/__ ______ _  (_) _/_ __
  / / / -_) __/  ' \/ / _/ // /
-/_/  \__/_/ /_/_/_/_/_/ \_, / 
-                       /___/  
+/_/  \__/_/ /_/_/_/_/_/ \_, /
+                       /___/
 ```
 
 A terminal-based Spotify client written in Go
 
+![Termify Demo](vhs/termify-demo.gif)
+
 ### Prerequisites
+
 - A Spotify account (Premium required for full playback functionality)
 
 ## Configuration
@@ -20,6 +23,7 @@ Termify supports multiple ways to configure the application:
 ### Configuration File
 
 By default, Termify looks for a configuration file at:
+
 - `~/.config/termify/config.yaml` (macOS/Linux)
 - `%APPDATA%\termify\config.yaml` (Windows)
 
@@ -30,8 +34,9 @@ server:
   port: 8080
 spotify:
   client_id: your_spotify_client_id
-  daemon_mode: false
   connect_client: default
+logging:
+  enabled: true
 ```
 
 ### Command-line Flags
@@ -46,8 +51,8 @@ Flags:
   --config string           Path to config file
   --port string             Server port
   --client-id string        Spotify client ID
-  --daemon                  Run in daemon mode
   --connect-client string   Spotify connect client to use
+  --logging bool            Enable or disable logging (default: true)
 ```
 
 ### Environment Variables
@@ -56,8 +61,8 @@ Termify also supports configuration via environment variables:
 
 - `TERMIFY_PORT`: Server port
 - `TERMIFY_CLIENT_ID`: Spotify client ID
-- `TERMIFY_DAEMON_MODE`: Set to "true" to enable daemon mode
 - `TERMIFY_CONNECT_CLIENT`: Spotify connect client to use
+- `TERMIFY_LOGGING_ENABLED`: Set to "true" or "1" to enable logging, anything else disables it
 
 ## Configuration Priority
 
@@ -85,6 +90,8 @@ go install github.com/dietzy1/termify@latest
 ```bash
 go build -o termify
 ```
+
+## Contributions
 
 ## License
 
