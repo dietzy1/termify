@@ -1,9 +1,9 @@
 # Termify Configuration Example
-# Copy this file to ~/.config/termify/config.yaml (macOS/Linux) or %APPDATA%\termify\config.yaml (Windows)
+# Copy this file to ~/.termify/config.yaml (macOS/Linux) or %USERPROFILE%\termify\config.yaml (Windows)
 
 # Server configuration
 server:
-  # Port for the authentication callback server
+  # Port for the server to listen on
   # Default: 8080
   port: 8080
 
@@ -13,11 +13,13 @@ spotify:
   # https://developer.spotify.com/dashboard/applications
   client_id: ""
   
-  # Whether to run in daemon mode (without requiring Spotify to be open)
-  # Default: false
-  daemon_mode: false
-  
   # Which Spotify connect client to use
   # Options: default, librespot
   # Default: default
-  connect_client: default 
+  connect_client: default
+
+# Logging configuration
+logging:
+  # Enable or disable debug logging to file
+  # Default: false
+  enabled: false

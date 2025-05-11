@@ -15,16 +15,24 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		log.Fatalf("Failed to create log file: %v", err)
-	}
-	defer f.Close()
-
 	// Load configuration
 	config, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Set up logging if enabled
+	if config.IsLoggingEnabled() {
+		logPath := config.GetLogFilePath()
+		f, err := tea.LogToFile(logPath, "debug")
+		if err != nil {
+			log.Printf("Failed to create log file: %v", err)
+		} else {
+			defer f.Close()
+			log.Printf("Logging enabled, writing to %s", logPath)
+		}
+	} else {
+		log.Println("Logging is disabled")
 	}
 
 	// Setup authentication service client

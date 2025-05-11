@@ -28,6 +28,12 @@ type Config struct {
 		ConnectClient string `yaml:"connect_client"`
 	} `yaml:"spotify"`
 
+	// Logging configuration
+	Logging struct {
+		// Whether logging is enabled
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"logging"`
+
 	// Internal configuration
 	ConfigPath string `yaml:"-"` // Not stored in config file
 }
@@ -39,6 +45,7 @@ func defaultConfig() *Config {
 	// Set default values
 	cfg.Server.Port = "8080"
 	cfg.Spotify.ConnectClient = "default"
+	cfg.Logging.Enabled = true
 
 	return cfg
 }
@@ -49,10 +56,11 @@ func LoadConfig() (*Config, error) {
 
 	// Define and parse command-line flags
 	var (
-		configPath    = flag.String("config", "", "Path to config file")
-		port          = flag.String("port", "", "Server port")
-		clientID      = flag.String("client-id", "", "Spotify client ID")
-		connectClient = flag.String("connect-client", "", "Spotify connect client to use")
+		configPath     = flag.String("config", "", "Path to config file")
+		port           = flag.String("port", "", "Server port")
+		clientID       = flag.String("client-id", "", "Spotify client ID")
+		connectClient  = flag.String("connect-client", "", "Spotify connect client to use")
+		loggingEnabled = flag.Bool("logging", true, "Enable or disable logging")
 	)
 	flag.Parse()
 
@@ -99,6 +107,9 @@ func LoadConfig() (*Config, error) {
 	if envConnectClient := os.Getenv("TERMIFY_CONNECT_CLIENT"); envConnectClient != "" {
 		cfg.Spotify.ConnectClient = envConnectClient
 	}
+	if envLoggingEnabled := os.Getenv("TERMIFY_LOGGING_ENABLED"); envLoggingEnabled != "" {
+		cfg.Logging.Enabled = envLoggingEnabled == "true" || envLoggingEnabled == "1"
+	}
 
 	// Override with command-line flags (highest priority)
 	if *port != "" {
@@ -109,6 +120,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if *connectClient != "" {
 		cfg.Spotify.ConnectClient = *connectClient
+	}
+	if *loggingEnabled {
+		cfg.Logging.Enabled = *loggingEnabled
 	}
 
 	// Ensure port has colon prefix
@@ -123,6 +137,8 @@ func LoadConfig() (*Config, error) {
 	log.Println("Spotify:")
 	log.Printf("  Client ID: %s", cfg.Spotify.ClientID)
 	log.Printf("  Connect client: %s", cfg.Spotify.ConnectClient)
+	log.Println("Logging:")
+	log.Printf("  Enabled: %t", cfg.Logging.Enabled)
 	log.Println("Config Path:")
 	log.Printf("  Path: %s", cfg.ConfigPath)
 	log.Println("============================")
@@ -178,4 +194,14 @@ func (c *Config) SetClientID(clientID string) error {
 // GetPort returns the server port with colon prefix
 func (c *Config) GetPort() string {
 	return c.Server.Port
+}
+
+// IsLoggingEnabled returns whether logging is enabled
+func (c *Config) IsLoggingEnabled() bool {
+	return c.Logging.Enabled
+}
+
+// GetLogFilePath returns the path to the log file
+func (c *Config) GetLogFilePath() string {
+	return c.ConfigPath + "/termify.log"
 }
