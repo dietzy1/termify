@@ -31,7 +31,6 @@ func newVerifier(l int) verifier {
 	return b
 }
 
-// Params is a convenience method which generates AuthCodeOptions compatible with the oauth2 package
 func (v verifier) params() []oauth2.AuthCodeOption {
 	return []oauth2.AuthCodeOption{
 		oauth2.SetAuthURLParam("code_verifier", string(v)),
@@ -49,7 +48,6 @@ type challenge string
 
 const challengeMethodS256 = "S256"
 
-// Params is a convenience method which generates AuthCodeOptions compatible with the oauth2 package
 func (c challenge) params() []oauth2.AuthCodeOption {
 	return []oauth2.AuthCodeOption{
 		oauth2.SetAuthURLParam("code_challenge_method", challengeMethodS256),

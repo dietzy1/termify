@@ -37,20 +37,14 @@ type service struct {
 }
 
 // NewService creates a new authentication service
-func NewService(c *config.Config) (*service, error) {
-
-	credManager, err := NewCredentialManager(c.GetClientID(), c.ConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create credential manager: %w", err)
-	}
+func NewService(c *config.Config, credManager *credentialManager) (*service, error) {
 
 	s := &service{
 		clientID:      "",
 		verifier:      newVerifier(lenMax),
 		authenticator: nil,
-
-		config:      c,
-		credManager: credManager,
+		config:        c,
+		credManager:   credManager,
 	}
 
 	return s, nil
@@ -60,7 +54,7 @@ func (s *service) SetTeaProgram(p *tea.Program) {
 	s.program = p
 }
 
-func (s *service) StartPkceAuth(ctx context.Context, clientID string) tea.Cmd {
+func (s *service) StartPkceAuth(clientID string) tea.Cmd {
 	log.Println("Token is invalid or not found, generating new URL")
 	url := s.generateUrl(clientID)
 	return func() tea.Msg {
@@ -74,9 +68,6 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 	token, err := s.credManager.loadToken()
 	if err != nil {
 		log.Println("Failed to load token:", err)
-		return func() tea.Msg {
-			return LoginErrorMsg{Error: fmt.Errorf("failed to load token: %w", err)}
-		}
 	}
 
 	clientID, err := s.credManager.loadClientID()
@@ -84,11 +75,13 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 		log.Println("Failed to load client ID:", err)
 		return nil
 	}
+	// Verify that its length is 32
+	if len(clientID) != 32 {
+		log.Println("Client ID is not valid: ", clientID)
+		return nil
+	}
+
 	s.setAuthenticator(clientID)
-	//TODO: We need to write some sort of intercepter for the oath2 token since it will be refreshed in the background.
-	// This means that our locally stored token will be invalidated on the spotify side and our local token is therefor out of sync and invalid.
-	// We must therefor ensure that on refresh then we also update the local token.
-	// We are able to check the token by doing client.Token()
 
 	// Exit early if we have a valid token
 	if token != nil && token.Valid() {
@@ -108,17 +101,16 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 		refreshedToken, err := s.authenticator.RefreshToken(ctx, token)
 		if err != nil {
 			log.Println("Failed to refresh token:", err)
+		}
+		if refreshedToken != nil {
+			log.Println("Token refreshed successfully")
+			log.Println("Refreshed token:", refreshedToken)
 			return func() tea.Msg {
-				return LoginErrorMsg{Error: fmt.Errorf("failed to refresh token: %w", err)}
+				return LoginClientMsg{Client: spotify.New(s.authenticator.Client(ctx, refreshedToken))}
 			}
 		}
-		log.Println("Token refreshed successfully")
-		log.Println("Refreshed token:", refreshedToken)
-
-		return func() tea.Msg {
-			return LoginClientMsg{Client: spotify.New(s.authenticator.Client(ctx, refreshedToken))}
-		}
 	}
+
 	// If we reach here, the token is invalid or not found
 	log.Println("Token is invalid or not found")
 
@@ -171,7 +163,9 @@ func (s *service) setAuthenticator(clientID string) {
 	)
 }
 
-func (s *service) saveToken(token *oauth2.Token) error {
+func (s *service) SaveToken(token *oauth2.Token) error {
+	log.Println("Saving token")
+
 	if err := s.credManager.saveToken(token); err != nil {
 		log.Printf("Failed to save token: %v", err)
 		return fmt.Errorf("failed to save token: %w", err)

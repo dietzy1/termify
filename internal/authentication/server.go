@@ -126,7 +126,7 @@ func (s *server) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	io.Writer.Write(w, htmlContent)
 	log.Println("Callback processing complete, HTML response sent")
 
-	if err := s.service.saveToken(tok); err != nil {
+	if err := s.service.SaveToken(tok); err != nil {
 		log.Printf("Failed to save token: %v", err)
 		return
 	}

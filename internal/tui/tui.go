@@ -10,12 +10,17 @@ import (
 	"github.com/dietzy1/termify/internal/authentication"
 	"github.com/dietzy1/termify/internal/config"
 	"github.com/zmb3/spotify/v2"
+	"golang.org/x/oauth2"
 )
 
 type authenticator interface {
-	StartPkceAuth(ctx context.Context, clientID string) tea.Cmd
+	StartPkceAuth(clientID string) tea.Cmd
 	StartStoredTokenAuth(ctx context.Context) tea.Cmd
 	SetTeaProgram(p *tea.Program)
+}
+
+type tokenStorer interface {
+	SaveToken(token *oauth2.Token) error
 }
 
 var _ tea.Model = (*model)(nil)
@@ -33,6 +38,7 @@ type model struct {
 
 	authModel        authModel
 	applicationModel applicationModel
+	tokenStorer      tokenStorer
 }
 
 func (m model) Init() tea.Cmd {
@@ -51,12 +57,13 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func Run(ctx context.Context, c *config.Config, authenticator authenticator) error {
+func Run(ctx context.Context, c *config.Config, authenticator authenticator, tokenStorer tokenStorer) error {
 
 	m := model{
 		state:            authenticating,
-		authModel:        newAuthModel(c, authenticator),
-		applicationModel: newApplication(nil),
+		authModel:        newAuthModel(ctx, c, authenticator),
+		applicationModel: newApplication(ctx, nil),
+		tokenStorer:      tokenStorer,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -65,6 +72,8 @@ func Run(ctx context.Context, c *config.Config, authenticator authenticator) err
 	// Handle context cancellation
 	go func() {
 		<-ctx.Done()
+
+		log.Println("Context cancelled, quitting program")
 		p.Quit()
 	}()
 
@@ -81,7 +90,8 @@ func transitionToApplication(m model, spotifyClient *spotify.Client) model {
 		height:           m.height,
 		state:            application,
 		authModel:        m.authModel,
-		applicationModel: newApplication(spotifyClient),
+		applicationModel: newApplication(m.applicationModel.ctx, spotifyClient),
+		tokenStorer:      m.tokenStorer,
 	}
 }
 
@@ -98,7 +108,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Quit):
-			return m, tea.Quit
+			return m.handleProgramQuit()
 		}
 	}
 
@@ -126,4 +136,19 @@ func (m model) View() string {
 		return m.applicationModel.View()
 	}
 	return "Illegal state"
+}
+
+func (m model) handleProgramQuit() (tea.Model, tea.Cmd) {
+	log.Println("Parent model (tui.go): Received quit command. Quitting program.")
+	oathToken := m.applicationModel.spotifyState.GetOathToken()
+	if oathToken != nil {
+		log.Println("Parent model (tui.go): Saving token before quitting.")
+		if err := m.tokenStorer.SaveToken(oathToken); err != nil {
+			log.Printf("Parent model (tui.go): Failed to save token: %v", err)
+		} else {
+			log.Println("Parent model (tui.go): Token saved successfully.")
+		}
+	}
+	// Sidenote we should potentially cancel the context here also so API calls do not hang
+	return m, tea.Quit
 }

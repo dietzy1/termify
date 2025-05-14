@@ -35,8 +35,14 @@ func main() {
 		log.Println("Logging is disabled")
 	}
 
+	// Setup credential manager
+	credManager, err := authentication.NewCredentialManager(config.GetClientID(), config.ConfigPath)
+	if err != nil {
+		log.Fatalf("Failed to create credential manager: %v", err)
+	}
+
 	// Setup authentication service client
-	authService, err := authentication.NewService(config)
+	authService, err := authentication.NewService(config, credManager)
 	if err != nil {
 		log.Fatalf("Failed to create auth service: %v", err)
 	}
@@ -55,7 +61,7 @@ func main() {
 	}()
 
 	// Run TUI - this will block until TUI exits
-	if err := tui.Run(ctx, config, authService); err != nil {
+	if err := tui.Run(ctx, config, authService, authService); err != nil {
 		log.Printf("TUI error: %v", err)
 	}
 }
