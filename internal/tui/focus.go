@@ -169,7 +169,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		m.focusedModel = FocusQueue
 		return m, tea.Batch(
 			tea.WindowSize(),
-			m.spotifyState.FetchQueue(),
+			m.spotifyState.FetchQueue(m.ctx),
 		), true
 
 	case key.Matches(msg, DefaultKeyMap.Device):
@@ -183,21 +183,21 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.PlayPause):
 		playerState := m.spotifyState.GetPlayerState()
 		if playerState.Playing {
-			return m, m.spotifyState.PausePlayback(), true
+			return m, m.spotifyState.PausePlayback(m.ctx), true
 		}
-		return m, m.spotifyState.StartPlayback(), true
+		return m, m.spotifyState.StartPlayback(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Next):
-		return m, m.spotifyState.NextTrack(), true
+		return m, m.spotifyState.NextTrack(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Previous):
-		return m, m.spotifyState.PreviousTrack(), true
+		return m, m.spotifyState.PreviousTrack(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Shuffle):
-		return m, m.spotifyState.ToggleShuffleMode(), true
+		return m, m.spotifyState.ToggleShuffleMode(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Repeat):
-		return m, m.spotifyState.ToggleRepeatMode(), true
+		return m, m.spotifyState.ToggleRepeatMode(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.VolumeUp):
-		return m, m.spotifyState.IncreaseVolume(), true
+		return m, m.spotifyState.IncreaseVolume(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.VolumeDown):
-		return m, m.spotifyState.DecreaseVolume(), true
+		return m, m.spotifyState.DecreaseVolume(m.ctx), true
 	}
 	log.Println("Unhandled key:", msg)
 

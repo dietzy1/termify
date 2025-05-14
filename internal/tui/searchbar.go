@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -19,6 +20,7 @@ type debouncedSearch struct {
 }
 
 type searchbarModel struct {
+	ctx   context.Context
 	width int
 
 	textInput textinput.Model
@@ -28,7 +30,7 @@ type searchbarModel struct {
 	spotifyState *state.SpotifyState
 }
 
-func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
+func newSearchbar(ctx context.Context, spotifyState *state.SpotifyState) searchbarModel {
 	ti := textinput.New()
 	ti.Placeholder = "What do you want to play?"
 	ti.CharLimit = 25
@@ -45,6 +47,7 @@ func newSearchbar(spotifyState *state.SpotifyState) searchbarModel {
 		Foreground(lipgloss.Color(TextColor))
 
 	return searchbarModel{
+		ctx:          ctx,
 		textInput:    ti,
 		searching:    false,
 		isFocused:    false,
@@ -86,7 +89,7 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case debouncedSearch:
 		if m.textInput.Value() == msg.searchTerm {
-			return m, m.spotifyState.SearchEverything(msg.searchTerm)
+			return m, m.spotifyState.SearchEverything(m.ctx, msg.searchTerm)
 		}
 
 	case tea.KeyMsg:

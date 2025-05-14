@@ -13,9 +13,9 @@ type QueueUpdatedMsg struct{}
 
 //TODO: Since spotify has shitty API support for queueing then it would be more optimal to keep a full client-side queue and just update the queue when the user adds a song to it
 
-func (s *SpotifyState) FetchQueue() tea.Cmd {
+func (s *SpotifyState) FetchQueue(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		queue, err := s.client.GetQueue(context.TODO())
+		queue, err := s.client.GetQueue(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching queue: %v", err)
 			return ErrorMsg{
@@ -57,9 +57,9 @@ func (s *SpotifyState) FetchQueue() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) AddToQueue(trackId spotify.ID) tea.Cmd {
+func (s *SpotifyState) AddToQueue(ctx context.Context, trackId spotify.ID) tea.Cmd {
 
-	if err := s.client.QueueSong(context.TODO(), trackId); err != nil {
+	if err := s.client.QueueSong(ctx, trackId); err != nil {
 		log.Printf("SpotifyState: Error adding track %s to queue: %v", trackId, err)
 		return func() tea.Msg {
 			return ErrorMsg{
@@ -70,5 +70,5 @@ func (s *SpotifyState) AddToQueue(trackId spotify.ID) tea.Cmd {
 	}
 
 	log.Printf("SpotifyState: Successfully added track %s to queue, fetching updated queue...", trackId)
-	return s.FetchQueue()
+	return s.FetchQueue(ctx)
 }

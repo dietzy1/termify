@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/zmb3/spotify/v2"
+	"golang.org/x/oauth2"
 )
 
 type ErrorMsg struct {
@@ -24,8 +25,6 @@ type TracksUpdatedMsg struct {
 
 type PlayerStateUpdatedMsg struct {
 }
-
-//TODO: pass a context into all the API functions like a human its fine if its a shared context from the TUI I think
 
 // SpotifyState manages all Spotify-related state and API calls
 type SpotifyState struct {
@@ -61,6 +60,16 @@ func NewSpotifyState(client *spotify.Client) *SpotifyState {
 		mu:          sync.RWMutex{},
 		tracksCache: make(map[spotify.ID][]spotify.SimpleTrack),
 	}
+}
+
+// Function which logs the content of the OATH token in the client
+func (s *SpotifyState) GetOathToken() *oauth2.Token {
+	token, err := s.client.Token()
+	if err != nil {
+		log.Printf("Error getting token: %v", err)
+		return nil
+	}
+	return token
 }
 
 func (s *SpotifyState) IsQueueEmpty() bool {

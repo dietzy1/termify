@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -20,6 +21,7 @@ type clearQueuedHighlightMsg struct {
 
 // PlaylistViewModel represents the table view for playlists and tracks
 type playlistViewModel struct {
+	ctx            context.Context
 	width, height  int
 	table          table.Model
 	isFocused      bool
@@ -28,8 +30,9 @@ type playlistViewModel struct {
 	highlightTimer *time.Timer         // Timer to clear the highlight
 }
 
-func newPlaylistView(spotifyState *state.SpotifyState) playlistViewModel {
+func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) playlistViewModel {
 	return playlistViewModel{
+		ctx:          ctx,
 		table:        createPlaylistTable(),
 		spotifyState: spotifyState,
 		queuedTracks: make(map[spotify.ID]bool),
@@ -75,7 +78,7 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
 						track := tracks[idx-1]
 						log.Printf("PlaylistView: Selected track: %s", track.ID)
-						return m, m.spotifyState.PlayTrack(track.ID)
+						return m, m.spotifyState.PlayTrack(m.ctx, track.ID)
 					}
 				}
 			}
@@ -98,7 +101,7 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 						// Return multiple commands: add to queue and start highlight timer
 						return m, tea.Batch(
-							m.spotifyState.AddToQueue(track.ID),
+							m.spotifyState.AddToQueue(m.ctx, track.ID),
 							tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
 								return clearQueuedHighlightMsg{TrackID: track.ID}
 							}),

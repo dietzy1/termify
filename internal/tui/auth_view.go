@@ -27,6 +27,7 @@ const (
 )
 
 type authModel struct {
+	ctx           context.Context
 	width, height int
 	input         textinput.Model
 	state         authState
@@ -37,7 +38,7 @@ type authModel struct {
 	authenticator authenticator
 }
 
-func newAuthModel(c *config.Config, authenticator authenticator) authModel {
+func newAuthModel(ctx context.Context, c *config.Config, authenticator authenticator) authModel {
 	textInput := textinput.New()
 	textInput.Placeholder = "Enter your Spotify Client ID"
 	textInput.Focus()
@@ -45,6 +46,7 @@ func newAuthModel(c *config.Config, authenticator authenticator) authModel {
 	textInput.Width = 40
 
 	return authModel{
+		ctx:           ctx,
 		input:         textInput,
 		state:         stateAwaitingClientID,
 		err:           nil,
@@ -98,7 +100,7 @@ func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.err = nil
-				return m, m.authenticator.StartPkceAuth(context.TODO(), clientID)
+				return m, m.authenticator.StartPkceAuth(clientID)
 
 			}
 		case key.Matches(msg, DefaultKeyMap.Copy):
@@ -260,5 +262,5 @@ func (m authModel) View() string {
 }
 
 func (m authModel) Init() tea.Cmd {
-	return m.authenticator.StartStoredTokenAuth(context.TODO())
+	return m.authenticator.StartStoredTokenAuth(m.ctx)
 }

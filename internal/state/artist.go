@@ -9,7 +9,7 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-func (s *SpotifyState) FetchTopTracks(artistId spotify.ID) tea.Cmd {
+func (s *SpotifyState) FetchTopTracks(ctx context.Context, artistId spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Fetching top tracks for artist: %s", artistId)
 		if artistId == "" {
@@ -34,7 +34,7 @@ func (s *SpotifyState) FetchTopTracks(artistId spotify.ID) tea.Cmd {
 			return TracksUpdatedMsg{}
 		}
 
-		topTracks, err := s.client.GetArtistsTopTracks(context.TODO(), artistId, "US")
+		topTracks, err := s.client.GetArtistsTopTracks(ctx, artistId, "US")
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching top tracks for artist %s: %v", artistId, err)
 			return ErrorMsg{

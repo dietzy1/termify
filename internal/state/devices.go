@@ -12,9 +12,9 @@ import (
 
 type DevicesUpdatedMsg struct{}
 
-func (s *SpotifyState) FetchDevices() tea.Cmd {
+func (s *SpotifyState) FetchDevices(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		devices, err := s.client.PlayerDevices(context.TODO())
+		devices, err := s.client.PlayerDevices(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching player devices: %v", err)
 			return ErrorMsg{
@@ -45,7 +45,7 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 
 		if activeDevice == -1 && len(devices) > 0 {
 			log.Printf("SpotifyState: No active device found, attempting to transfer playback to %s", devices[0].Name)
-			err = s.client.TransferPlayback(context.TODO(), devices[0].ID, false)
+			err = s.client.TransferPlayback(ctx, devices[0].ID, false)
 			if err != nil {
 				log.Printf("SpotifyState: Failed to transfer playback to device %s: %v", devices[0].Name, err)
 				return ErrorMsg{
@@ -54,7 +54,7 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 				}
 			}
 			time.Sleep(500 * time.Millisecond)
-			devices, err = s.client.PlayerDevices(context.TODO())
+			devices, err = s.client.PlayerDevices(ctx)
 			if err != nil {
 				log.Printf("SpotifyState: Error re-fetching devices after transfer attempt: %v", err)
 				return ErrorMsg{
@@ -74,10 +74,10 @@ func (s *SpotifyState) FetchDevices() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) SelectDevice(deviceID spotify.ID) tea.Cmd {
+func (s *SpotifyState) SelectDevice(ctx context.Context, deviceID spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 
-		err := s.client.TransferPlayback(context.TODO(), deviceID, false)
+		err := s.client.TransferPlayback(ctx, deviceID, false)
 		if err != nil {
 			log.Printf("SpotifyState: Error transferring playback to device %v: %v", deviceID, err)
 			return ErrorMsg{
@@ -89,7 +89,7 @@ func (s *SpotifyState) SelectDevice(deviceID spotify.ID) tea.Cmd {
 		log.Printf("Selected device %s", deviceID)
 		time.Sleep(500 * time.Millisecond)
 
-		devices, err := s.client.PlayerDevices(context.TODO())
+		devices, err := s.client.PlayerDevices(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching player devices after selecting %s: %v", deviceID, err)
 			return ErrorMsg{

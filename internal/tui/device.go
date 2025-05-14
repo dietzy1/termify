@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -26,6 +27,7 @@ type deviceKeyMap struct {
 }
 
 type deviceSelectorModel struct {
+	ctx          context.Context
 	width        int
 	height       int
 	spotifyState *state.SpotifyState
@@ -34,8 +36,9 @@ type deviceSelectorModel struct {
 	isFocused    bool
 }
 
-func NewDeviceSelector(spotifyState *state.SpotifyState) deviceSelectorModel {
+func NewDeviceSelector(ctx context.Context, spotifyState *state.SpotifyState) deviceSelectorModel {
 	return deviceSelectorModel{
+		ctx:          ctx,
 		width:        28,
 		height:       4,
 		spotifyState: spotifyState,
@@ -57,7 +60,7 @@ func (m deviceSelectorModel) Init() tea.Cmd {
 		log.Println("Unable to retrieve device ID")
 		return nil
 	}
-	return m.spotifyState.SelectDevice(deviceID)
+	return m.spotifyState.SelectDevice(m.ctx, deviceID)
 }
 
 func (m *deviceSelectorModel) Focus() {
@@ -133,7 +136,7 @@ func (m deviceSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			deviceID := spotify.ID(m.devices[m.cursor].ID)
-			return m, m.spotifyState.SelectDevice(deviceID)
+			return m, m.spotifyState.SelectDevice(m.ctx, deviceID)
 		}
 	}
 

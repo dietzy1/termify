@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"log"
 
 	"github.com/charmbracelet/bubbles/cursor"
@@ -12,6 +13,7 @@ import (
 )
 
 type applicationModel struct {
+	ctx           context.Context
 	width, height int
 
 	spotifyState *state.SpotifyState
@@ -37,30 +39,31 @@ func (m applicationModel) Init() tea.Cmd {
 		tea.WindowSize(),
 		m.searchBar.Init(),
 		m.audioPlayer.Init(),
-		m.spotifyState.FetchPlaylists(),
-		m.spotifyState.FetchPlaybackState(),
-		m.spotifyState.FetchQueue(),
-		m.spotifyState.FetchDevices(),
+		m.spotifyState.FetchPlaylists(m.ctx),
+		m.spotifyState.FetchPlaybackState(m.ctx),
+		m.spotifyState.FetchQueue(m.ctx),
+		m.spotifyState.FetchDevices(m.ctx),
 	)
 }
 
-func newApplication(client *spotify.Client) applicationModel {
+func newApplication(ctx context.Context, client *spotify.Client) applicationModel {
 
 	spotifyState := state.NewSpotifyState(client)
 	log.Printf("Application: Created SpotifyState instance: %v", spotifyState != nil)
 
 	return applicationModel{
+		ctx:             ctx,
 		spotifyState:    spotifyState,
 		focusedModel:    FocusLibrary,
 		navbar:          newNavbar(),
 		library:         newLibrary(spotifyState),
-		searchBar:       newSearchbar(spotifyState),
-		playlistView:    newPlaylistView(spotifyState),
-		searchView:      newSearchView(spotifyState),
+		searchBar:       newSearchbar(ctx, spotifyState),
+		playlistView:    newPlaylistView(ctx, spotifyState),
+		searchView:      newSearchView(ctx, spotifyState),
 		queueView:       newQueue(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
-		audioPlayer:     newAudioPlayer(spotifyState),
-		deviceSelector:  NewDeviceSelector(spotifyState),
+		audioPlayer:     newAudioPlayer(ctx, spotifyState),
+		deviceSelector:  NewDeviceSelector(ctx, spotifyState),
 		errorToast:      newErrorToast(),
 		activeViewport:  MainView,
 	}
@@ -155,7 +158,7 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case state.PlaylistSelectedMsg:
-		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(spotify.ID(msg.PlaylistID)))
+		cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(m.ctx, spotify.ID(msg.PlaylistID)))
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:

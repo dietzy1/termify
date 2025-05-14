@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ var _ tea.Model = (*audioPlayerModel)(nil)
 type AutoplayNextTrackMsg struct{}
 
 type audioPlayerModel struct {
+	ctx   context.Context
 	width int
 
 	progress     int
@@ -23,8 +25,9 @@ type audioPlayerModel struct {
 	spotifyState *state.SpotifyState
 }
 
-func newAudioPlayer(spotifyState *state.SpotifyState) audioPlayerModel {
+func newAudioPlayer(ctx context.Context, spotifyState *state.SpotifyState) audioPlayerModel {
 	return audioPlayerModel{
+		ctx:   ctx,
 		width: 0,
 		bar: progress.New(
 			progress.WithScaledGradient("#1db954", "#212121"),
@@ -144,8 +147,8 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Check queue and emit autoplay message when song ends
 				return m, tea.Batch(
-					m.spotifyState.FetchQueue(),
-					m.spotifyState.FetchPlaybackState(),
+					m.spotifyState.FetchQueue(m.ctx),
+					m.spotifyState.FetchPlaybackState(m.ctx),
 					func() tea.Msg { return AutoplayNextTrackMsg{} },
 					tickCmd(),
 				)

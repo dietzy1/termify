@@ -34,6 +34,7 @@ func (m errorToastModel) Init() tea.Cmd {
 func (m errorToastModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowToastMsg:
+		log.Println("Received ShowToastMsg:", msg.Title, msg.Message)
 		m.title = msg.Title
 		m.message = msg.Message
 		m.active = true

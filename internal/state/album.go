@@ -9,7 +9,7 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
+func (s *SpotifyState) FetchAlbumTracks(ctx context.Context, albumId spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Fetching tracks for album: %s", albumId)
 		if albumId == "" {
@@ -37,7 +37,7 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 		}
 
 		log.Printf("SpotifyState: No cache found, fetching from API for album %s", albumId)
-		albumTracks, err := s.client.GetAlbum(context.TODO(), albumId)
+		albumTracks, err := s.client.GetAlbum(ctx, albumId)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching album info: %v", err)
 			// Return ErrorMsg for API error
@@ -51,7 +51,7 @@ func (s *SpotifyState) FetchAlbumTracks(albumId spotify.ID) tea.Cmd {
 
 		for page := 1; ; page++ {
 			log.Printf("SpotifyState: Fetching page %d of playlist items", page)
-			err = s.client.NextPage(context.TODO(), &albumTracks.Tracks)
+			err = s.client.NextPage(ctx, &albumTracks.Tracks)
 			if err == spotify.ErrNoMorePages {
 				break
 			}

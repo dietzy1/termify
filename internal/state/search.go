@@ -2,9 +2,7 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"math/rand"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/zmb3/spotify/v2"
@@ -12,7 +10,7 @@ import (
 
 type SearchResultsUpdatedMsg struct{}
 
-func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
+func (s *SpotifyState) SearchEverything(ctx context.Context, query string) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Searching for: %s", query)
 		if query == "" {
@@ -23,7 +21,7 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 			}
 		}
 
-		results, err := s.client.Search(context.TODO(), query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist)
+		results, err := s.client.Search(ctx, query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist)
 		if err != nil {
 			log.Printf("SpotifyState: Error searching: %v", err)
 			return ErrorMsg{
@@ -57,7 +55,7 @@ func (s *SpotifyState) SearchEverything(query string) tea.Cmd {
 }
 
 // TODO: Work in progress
-func (s *SpotifyState) PlayRecommendTrack(trackID spotify.ID) tea.Cmd {
+/* func (s *SpotifyState) PlayRecommendTrack( trackID spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Finding recommendation for track: %s", trackID)
 		if trackID == "" {
@@ -122,6 +120,6 @@ func (s *SpotifyState) PlayRecommendTrack(trackID spotify.ID) tea.Cmd {
 		log.Printf("SpotifyState: Playing recommended track: %s by %s", selectedTrack.Name, selectedTrack.Artists[0].Name)
 
 		// Play the selected track (returns tea.Msg directly)
-		return s.PlayTrack(selectedTrack.ID)()
+		return s.PlayTrack(ctx, selectedTrack.ID)()
 	}
-}
+} */

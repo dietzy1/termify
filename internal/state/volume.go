@@ -8,7 +8,7 @@ import (
 )
 
 // IncreaseVolume increases the volume by 10%
-func (s *SpotifyState) IncreaseVolume() tea.Cmd {
+func (s *SpotifyState) IncreaseVolume(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		s.mu.RLock()
 		currentVolume := s.playerState.Device.Volume
@@ -20,7 +20,7 @@ func (s *SpotifyState) IncreaseVolume() tea.Cmd {
 			newVolume = 100
 		}
 
-		err := s.client.Volume(context.TODO(), int(newVolume))
+		err := s.client.Volume(ctx, int(newVolume))
 		if err != nil {
 			log.Printf("SpotifyState: Error increasing volume: %v", err)
 			return ErrorMsg{
@@ -38,7 +38,7 @@ func (s *SpotifyState) IncreaseVolume() tea.Cmd {
 }
 
 // DecreaseVolume decreases the volume by 10%
-func (s *SpotifyState) DecreaseVolume() tea.Cmd {
+func (s *SpotifyState) DecreaseVolume(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		s.mu.RLock()
 		currentVolume := s.playerState.Device.Volume
@@ -50,7 +50,7 @@ func (s *SpotifyState) DecreaseVolume() tea.Cmd {
 			newVolume = 0
 		}
 
-		err := s.client.Volume(context.TODO(), int(newVolume))
+		err := s.client.Volume(ctx, int(newVolume))
 		if err != nil {
 			log.Printf("SpotifyState: Error decreasing volume: %v", err)
 			return ErrorMsg{

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"log"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -23,6 +24,7 @@ func (i item) FilterValue() string { return i.title }
 
 // SearchViewModel represents the search view with multiple lists
 type searchViewModel struct {
+	ctx           context.Context
 	width, height int
 	isFocused     bool
 	spotifyState  *state.SpotifyState
@@ -38,8 +40,9 @@ type searchViewModel struct {
 }
 
 // NewSearchView creates a new search view
-func newSearchView(spotifyState *state.SpotifyState) searchViewModel {
+func newSearchView(ctx context.Context, spotifyState *state.SpotifyState) searchViewModel {
 	m := searchViewModel{
+		ctx:          ctx,
 		spotifyState: spotifyState,
 		trackList:    createEmptyList("Tracks"),
 		playlistList: createEmptyList("Playlists"),
@@ -99,7 +102,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					id := m.spotifyState.GetSearchResultTracks()[index].ID
 					// Play the track and remain on the current view
 					return m, tea.Batch(
-						m.spotifyState.PlayTrack(id),
+						m.spotifyState.PlayTrack(m.ctx, id),
 						// Stay in search view with current focus
 						NavigateCmd(FocusSearchTracksView, false, "", playlistView),
 					)
@@ -109,7 +112,7 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
 					id := m.spotifyState.GetSearchResultTracks()[index].ID
-					return m, m.spotifyState.AddToQueue(id)
+					return m, m.spotifyState.AddToQueue(m.ctx, id)
 				}
 			}
 

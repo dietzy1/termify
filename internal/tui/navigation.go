@@ -63,11 +63,11 @@ func (m applicationModel) handleNavigationMsg(msg NavigationMsg) (applicationMod
 	if msg.selectedID != "" {
 		switch msg.viewport {
 		case playlistView:
-			cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(msg.selectedID))
+			cmds = append(cmds, m.spotifyState.FetchPlaylistTracks(m.ctx, msg.selectedID))
 		case artistTopTracksView:
-			cmds = append(cmds, m.spotifyState.FetchTopTracks(spotify.ID(msg.selectedID)))
+			cmds = append(cmds, m.spotifyState.FetchTopTracks(m.ctx, spotify.ID(msg.selectedID)))
 		case albumTracksView:
-			cmds = append(cmds, m.spotifyState.FetchAlbumTracks(msg.selectedID))
+			cmds = append(cmds, m.spotifyState.FetchAlbumTracks(m.ctx, msg.selectedID))
 		}
 	}
 	return m, tea.Batch(cmds...)

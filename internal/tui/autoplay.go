@@ -23,13 +23,13 @@ func (m applicationModel) handleAutoplay() (applicationModel, tea.Cmd) {
 			// PlaylistView handles both normal playlists and other track views (artist, album)
 			if nextTrack := m.playlistView.getNextTrack(); nextTrack != "" {
 				log.Printf("Playing next track from playlist: %s", nextTrack)
-				return m, m.spotifyState.PlayTrack(nextTrack)
+				return m, m.spotifyState.PlayTrack(m.ctx, nextTrack)
 			}
 
 		case m.isSearchViewFocus():
 			if nextTrack := m.searchView.GetNextTrack(m.focusedModel); nextTrack != "" {
 				log.Printf("Playing next track from search: %s", nextTrack)
-				return m, m.spotifyState.PlayTrack(nextTrack)
+				return m, m.spotifyState.PlayTrack(m.ctx, nextTrack)
 			}
 		}
 		//TODO: Do we need to add a fallback here?
@@ -39,5 +39,5 @@ func (m applicationModel) handleAutoplay() (applicationModel, tea.Cmd) {
 	}
 
 	// Just refresh playback state if queue is not empty
-	return m, m.spotifyState.FetchPlaybackState()
+	return m, m.spotifyState.FetchPlaybackState(m.ctx)
 }

@@ -10,9 +10,9 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-func (s *SpotifyState) FetchPlaybackState() tea.Cmd {
+func (s *SpotifyState) FetchPlaybackState(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state: %v", err)
 			return ErrorMsg{
@@ -30,9 +30,9 @@ func (s *SpotifyState) FetchPlaybackState() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) StartPlayback() tea.Cmd {
+func (s *SpotifyState) StartPlayback(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		if err := s.client.Play(context.TODO()); err != nil {
+		if err := s.client.Play(ctx); err != nil {
 			log.Printf("SpotifyState: Error starting playback: %v", err)
 			return ErrorMsg{
 				Title:   "Failed to Start Playback",
@@ -42,7 +42,7 @@ func (s *SpotifyState) StartPlayback() tea.Cmd {
 
 		time.Sleep(500 * time.Millisecond)
 
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after starting: %v", err)
 			return ErrorMsg{
@@ -61,11 +61,11 @@ func (s *SpotifyState) StartPlayback() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) PausePlayback() tea.Cmd {
+func (s *SpotifyState) PausePlayback(ctx context.Context) tea.Cmd {
 
 	return func() tea.Msg {
 
-		if err := s.client.Pause(context.TODO()); err != nil {
+		if err := s.client.Pause(ctx); err != nil {
 			log.Printf("SpotifyState: Error pausing playback: %v", err)
 			return ErrorMsg{
 				Title:   "Failed to Pause Playback",
@@ -75,7 +75,7 @@ func (s *SpotifyState) PausePlayback() tea.Cmd {
 
 		time.Sleep(500 * time.Millisecond)
 
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after pausing: %v", err)
 			return ErrorMsg{
@@ -94,9 +94,9 @@ func (s *SpotifyState) PausePlayback() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) NextTrack() tea.Cmd {
+func (s *SpotifyState) NextTrack(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		if err := s.client.Next(context.TODO()); err != nil {
+		if err := s.client.Next(ctx); err != nil {
 			log.Printf("SpotifyState: Error skipping to next track: %v", err)
 			return ErrorMsg{
 				Title:   "Failed to Skip to Next Track",
@@ -106,7 +106,7 @@ func (s *SpotifyState) NextTrack() tea.Cmd {
 
 		time.Sleep(500 * time.Millisecond)
 
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after skipping next: %v", err)
 			return ErrorMsg{
@@ -126,9 +126,9 @@ func (s *SpotifyState) NextTrack() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) PreviousTrack() tea.Cmd {
+func (s *SpotifyState) PreviousTrack(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
-		if err := s.client.Previous(context.TODO()); err != nil {
+		if err := s.client.Previous(ctx); err != nil {
 			log.Printf("SpotifyState: Error skipping to previous track: %v", err)
 			return ErrorMsg{
 				Title:   "Failed to Skip to Previous Track",
@@ -137,7 +137,7 @@ func (s *SpotifyState) PreviousTrack() tea.Cmd {
 		}
 
 		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after skipping previous: %v", err)
 			return ErrorMsg{
@@ -156,12 +156,12 @@ func (s *SpotifyState) PreviousTrack() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
+func (s *SpotifyState) PlayTrack(ctx context.Context, trackID spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		playOptions := &spotify.PlayOptions{
 			URIs: []spotify.URI{"spotify:track:" + spotify.URI(trackID)},
 		}
-		if err := s.client.PlayOpt(context.TODO(), playOptions); err != nil {
+		if err := s.client.PlayOpt(ctx, playOptions); err != nil {
 			log.Printf("SpotifyState: Error playing track %s: %v", trackID, err)
 			return ErrorMsg{
 				Title:   fmt.Sprintf("Failed to Play Track %s", trackID),
@@ -170,7 +170,7 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 		}
 
 		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after playing track %s: %v", trackID, err)
 			return ErrorMsg{
@@ -189,14 +189,14 @@ func (s *SpotifyState) PlayTrack(trackID spotify.ID) tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
+func (s *SpotifyState) ToggleShuffleMode(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		s.mu.RLock()
 		shuffleState := s.playerState.ShuffleState
 		s.mu.RUnlock()
 
 		newState := !shuffleState
-		if err := s.client.Shuffle(context.TODO(), newState); err != nil {
+		if err := s.client.Shuffle(ctx, newState); err != nil {
 			log.Printf("SpotifyState: Error toggling shuffle mode to %v: %v", newState, err)
 			return ErrorMsg{
 				Title:   "Failed to Toggle Shuffle",
@@ -206,7 +206,7 @@ func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
 
 		time.Sleep(500 * time.Millisecond)
 		// We can do this alot smarter by checking if the track has changed
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after toggling shuffle: %v", err)
 			return ErrorMsg{
@@ -225,7 +225,7 @@ func (s *SpotifyState) ToggleShuffleMode() tea.Cmd {
 	}
 }
 
-func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
+func (s *SpotifyState) ToggleRepeatMode(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		s.mu.RLock()
 		currentRepeatState := s.playerState.RepeatState
@@ -245,7 +245,7 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 			newState = "off"
 		}
 
-		if err := s.client.Repeat(context.TODO(), newState); err != nil {
+		if err := s.client.Repeat(ctx, newState); err != nil {
 			log.Printf("SpotifyState: Error setting repeat mode to %s: %v", newState, err)
 			return ErrorMsg{
 				Title:   fmt.Sprintf("Failed to Set Repeat Mode to %s", newState),
@@ -254,7 +254,7 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 		}
 
 		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
+		state, err := s.client.PlayerState(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playback state after setting repeat mode: %v", err)
 			return ErrorMsg{
@@ -272,95 +272,3 @@ func (s *SpotifyState) ToggleRepeatMode() tea.Cmd {
 		return PlayerStateUpdatedMsg{}
 	}
 }
-
-/*
-func (s *SpotifyState) PlayAlbum(albumID spotify.ID) tea.Cmd {
-	return func() tea.Msg {
-		albumURI := spotify.URI("spotify:album:" + albumID)
-		playOptions := &spotify.PlayOptions{
-			PlaybackContext: &albumURI,
-		}
-		if err := s.client.PlayOpt(context.TODO(), playOptions); err != nil {
-			log.Printf("SpotifyState: Error playing album %s: %v", albumID, err)
-			return ErrorMsg{
-				Title:   fmt.Sprintf("Failed to Play Album %s", albumID),
-				Message: err.Error(),
-			}
-		}
-		// Refresh state after starting playback
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching state after playing album %s: %v", albumID, err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Started playing album %s, but failed to refresh state: %s", albumID, err.Error()),
-			}
-		}
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-		return PlayerStateUpdatedMsg{}
-	}
-}
-
-func (s *SpotifyState) PlayPlaylist(playlistID spotify.ID) tea.Cmd {
-	return func() tea.Msg {
-		playlistURI := spotify.URI("spotify:playlist:" + playlistID)
-		playOptions := &spotify.PlayOptions{
-			PlaybackContext: &playlistURI,
-		}
-		if err := s.client.PlayOpt(context.TODO(), playOptions); err != nil {
-			log.Printf("SpotifyState: Error playing playlist %s: %v", playlistID, err)
-			return ErrorMsg{
-				Title:   fmt.Sprintf("Failed to Play Playlist %s", playlistID),
-				Message: err.Error(),
-			}
-		}
-		// Refresh state after starting playback
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching state after playing playlist %s: %v", playlistID, err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Started playing playlist %s, but failed to refresh state: %s", playlistID, err.Error()),
-			}
-		}
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-		return PlayerStateUpdatedMsg{}
-	}
-}
-
-func (s *SpotifyState) PlayArtist(artistID spotify.ID) tea.Cmd {
-	return func() tea.Msg {
-		artistURI := spotify.URI("spotify:artist:" + artistID)
-		playOptions := &spotify.PlayOptions{
-			PlaybackContext: &artistURI, // Playing an artist context usually plays their top tracks
-		}
-		if err := s.client.PlayOpt(context.TODO(), playOptions); err != nil {
-			log.Printf("SpotifyState: Error playing artist %s: %v", artistID, err)
-			return ErrorMsg{
-				Title:   fmt.Sprintf("Failed to Play Artist %s", artistID),
-				Message: err.Error(),
-			}
-		}
-		// Refresh state after starting playback
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(context.TODO())
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching state after playing artist %s: %v", artistID, err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Started playing artist %s, but failed to refresh state: %s", artistID, err.Error()),
-			}
-		}
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-		return PlayerStateUpdatedMsg{}
-	}
-}
-*/

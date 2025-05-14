@@ -10,7 +10,7 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-func (s *SpotifyState) FetchPlaylists() tea.Cmd {
+func (s *SpotifyState) FetchPlaylists(ctx context.Context) tea.Cmd {
 	log.Printf("SpotifyState: Starting FetchPlaylists command creation")
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Executing FetchPlaylists, client: %v", s.client != nil)
@@ -22,7 +22,7 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 			}
 		}
 
-		playlists, err := s.client.CurrentUsersPlaylists(context.TODO())
+		playlists, err := s.client.CurrentUsersPlaylists(ctx)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlists: %v", err)
 			return ErrorMsg{
@@ -41,7 +41,7 @@ func (s *SpotifyState) FetchPlaylists() tea.Cmd {
 }
 
 // FetchPlaylistTracks retrieves all tracks for a given playlist and emits a state update
-func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
+func (s *SpotifyState) FetchPlaylistTracks(ctx context.Context, playlistID spotify.ID) tea.Cmd {
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Fetching tracks for playlist: %s", playlistID)
 		if playlistID == "" {
@@ -68,7 +68,7 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 		}
 
 		log.Printf("SpotifyState: No cache found, fetching from API for playlist %s", playlistID)
-		playlistItems, err := s.client.GetPlaylistItems(context.TODO(), spotify.ID(playlistID))
+		playlistItems, err := s.client.GetPlaylistItems(ctx, spotify.ID(playlistID))
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlist items: %v", err)
 			return ErrorMsg{
@@ -82,7 +82,7 @@ func (s *SpotifyState) FetchPlaylistTracks(playlistID spotify.ID) tea.Cmd {
 		page := 1
 		for {
 			log.Printf("SpotifyState: Fetching page %d of playlist items", page)
-			err = s.client.NextPage(context.TODO(), playlistItems)
+			err = s.client.NextPage(ctx, playlistItems)
 			if err == spotify.ErrNoMorePages {
 				break
 			}
