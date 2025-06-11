@@ -5,6 +5,7 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/zmb3/spotify/v2"
 )
 
 // IncreaseVolume increases the volume by 10%
@@ -55,6 +56,37 @@ func (s *SpotifyState) DecreaseVolume(ctx context.Context) tea.Cmd {
 			log.Printf("SpotifyState: Error decreasing volume: %v", err)
 			return ErrorMsg{
 				Title:   "Failed to Decrease Volume",
+				Message: err.Error(),
+			}
+		}
+
+		s.mu.Lock()
+		s.playerState.Device.Volume = newVolume
+		s.mu.Unlock()
+
+		return PlayerStateUpdatedMsg{}
+	}
+}
+
+// Mute toggles the mute state of the player
+func (s *SpotifyState) Mute(ctx context.Context) tea.Cmd {
+	return func() tea.Msg {
+		s.mu.RLock()
+		currentVolume := s.playerState.Device.Volume
+		s.mu.RUnlock()
+
+		var newVolume spotify.Numeric
+		if currentVolume > 0 {
+			newVolume = 0
+		} else {
+			newVolume = 50
+		}
+
+		err := s.client.Volume(ctx, int(newVolume))
+		if err != nil {
+			log.Printf("SpotifyState: Error toggling mute: %v", err)
+			return ErrorMsg{
+				Title:   "Failed to Toggle Mute",
 				Message: err.Error(),
 			}
 		}

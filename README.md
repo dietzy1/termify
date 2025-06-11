@@ -1,14 +1,6 @@
 # Termify - Spotify TUI Client
 
-```
- ______              _ ___
-/_  __/__ ______ _  (_) _/_ __
- / / / -_) __/  ' \/ / _/ // /
-/_/  \__/_/ /_/_/_/_/_/ \_, /
-                       /___/
-```
-
-A terminal-based Spotify client written in Go
+A terminal-based Spotify client written in Go using Bubbletea
 
 ![Termify Demo](vhs/termify-demo.gif)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,9 +54,11 @@ func main() {
 		log.Fatalf("Failed to create authentication server: %v", err)
 	}
 
+	var authServiceErr error
 	go func() {
 		if err := authServer.ListenAndServe(ctx); err != nil && ctx.Err() == nil {
 			log.Printf("Server error: %v", err)
+			authServiceErr = fmt.Errorf("authentication server error: %w", err)
 			cancel()
 		}
 	}()
@@ -63,5 +66,9 @@ func main() {
 	// Run TUI - this will block until TUI exits
 	if err := tui.Run(ctx, config, authService, authService); err != nil {
 		log.Printf("TUI error: %v", err)
+	}
+
+	if authServiceErr != nil {
+		fmt.Println("Termify encountered an error:", authServiceErr)
 	}
 }

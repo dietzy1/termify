@@ -198,6 +198,8 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, m.spotifyState.IncreaseVolume(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.VolumeDown):
 		return m, m.spotifyState.DecreaseVolume(m.ctx), true
+	case key.Matches(msg, DefaultKeyMap.VolumeMute):
+		return m, m.spotifyState.Mute(m.ctx), true
 	}
 	log.Println("Unhandled key:", msg)
 

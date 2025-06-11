@@ -18,14 +18,13 @@ type KeyMap struct {
 	Copy       key.Binding
 	Return     key.Binding
 	AddToQueue key.Binding
-	ViewQueue  key.Binding
 
 	// System
-	Quit     key.Binding
-	Help     key.Binding
-	Settings key.Binding
-	Search   key.Binding
-	Device   key.Binding
+	Quit      key.Binding
+	Help      key.Binding
+	Search    key.Binding
+	ViewQueue key.Binding
+	Device    key.Binding
 
 	// Media controls
 	Shuffle    key.Binding
@@ -94,10 +93,6 @@ var DefaultKeyMap = KeyMap{
 	VolumeDown: key.NewBinding(
 		key.WithKeys("shift+down"),
 		key.WithHelp("shift+↓", "lower volume"),
-	),
-	Settings: key.NewBinding(
-		key.WithKeys("ctrl+s"),
-		key.WithHelp("ctrl+s", "show settings view"),
 	),
 	Search: key.NewBinding(
 		key.WithKeys("/"),

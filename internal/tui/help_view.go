@@ -39,7 +39,6 @@ func (m applicationModel) renderHelp() string {
 	navigationBindings := []key.Binding{
 		DefaultKeyMap.Up, DefaultKeyMap.Down, DefaultKeyMap.Left, DefaultKeyMap.Right,
 		DefaultKeyMap.CycleFocusForward, DefaultKeyMap.CycleFocusBackward,
-		DefaultKeyMap.Return,
 	}
 
 	actionBindings := []key.Binding{
@@ -47,7 +46,7 @@ func (m applicationModel) renderHelp() string {
 	}
 
 	systemBindings := []key.Binding{
-		DefaultKeyMap.Help, DefaultKeyMap.Quit, DefaultKeyMap.Settings,
+		DefaultKeyMap.Help, DefaultKeyMap.Quit, DefaultKeyMap.Search, DefaultKeyMap.ViewQueue, DefaultKeyMap.Device,
 	}
 
 	mediaBindings := []key.Binding{
