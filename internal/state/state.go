@@ -76,7 +76,7 @@ func (s *SpotifyState) IsQueueEmpty() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if s.queue == nil || len(s.queue) == 0 {
+	if len(s.queue) == 0 {
 		return true
 	}
 

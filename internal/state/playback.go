@@ -4,11 +4,92 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/zmb3/spotify/v2"
 )
+
+const (
+	maxRetries     = 3
+	baseRetryDelay = 200 * time.Millisecond
+	maxRetryDelay  = 2 * time.Second
+)
+
+type RetryableOperation func(ctx context.Context) error
+
+func (s *SpotifyState) executeWithStateUpdate(ctx context.Context, operation RetryableOperation, operationName string) tea.Cmd {
+	return func() tea.Msg {
+
+		if err := operation(ctx); err != nil {
+			log.Printf("SpotifyState: Error in %s: %v", operationName, err)
+			return ErrorMsg{
+				Title:   fmt.Sprintf("Failed to %s", operationName),
+				Message: err.Error(),
+			}
+		}
+
+		if err := s.updateStateWithRetry(ctx); err != nil {
+			log.Printf("SpotifyState: Error updating state after %s: %v", operationName, err)
+			return ErrorMsg{
+				Title:   "Failed to Update Playback State",
+				Message: fmt.Sprintf("%s completed, but failed to refresh state: %s", operationName, err.Error()),
+			}
+		}
+
+		return PlayerStateUpdatedMsg{}
+	}
+}
+
+// updateStateWithRetry fetches player state with exponential backoff for unchanged timestamps
+func (s *SpotifyState) updateStateWithRetry(ctx context.Context) error {
+
+	s.mu.RLock()
+	lastTimestamp := s.playerState.Timestamp
+	s.mu.RUnlock()
+
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		state, err := s.client.PlayerState(ctx)
+		if err != nil {
+			lastErr = err
+			log.Printf("SpotifyState: API error on attempt %d: %v", attempt+1, err)
+
+			delay := time.Duration(float64(baseRetryDelay) * math.Pow(2, float64(attempt)))
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+			time.Sleep(delay)
+			continue
+		}
+
+		log.Printf("SpotifyState: Player state fetched (attempt %d): timestamp %d vs %d",
+			attempt+1, state.Timestamp, lastTimestamp)
+
+		if state.Timestamp != lastTimestamp {
+			s.mu.Lock()
+			s.playerState = *state
+			s.mu.Unlock()
+			return nil
+		}
+
+		lastErr = fmt.Errorf("player state timestamp unchanged after %d attempts", attempt+1)
+
+		if attempt < maxRetries-1 {
+			delay := time.Duration(float64(baseRetryDelay) * math.Pow(2, float64(attempt)))
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+			log.Printf("SpotifyState: Timestamp unchanged on attempt %d, waiting %v before retry", attempt+1, delay)
+			time.Sleep(delay)
+		}
+	}
+
+	log.Printf("SpotifyState: Max retries reached, using last fetched state")
+	return lastErr
+}
 
 func (s *SpotifyState) FetchPlaybackState(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
@@ -31,162 +112,41 @@ func (s *SpotifyState) FetchPlaybackState(ctx context.Context) tea.Cmd {
 }
 
 func (s *SpotifyState) StartPlayback(ctx context.Context) tea.Cmd {
-	return func() tea.Msg {
-		if err := s.client.Play(ctx); err != nil {
-			log.Printf("SpotifyState: Error starting playback: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Start Playback",
-				Message: err.Error(),
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after starting: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Playback started, but failed to refresh state: %s", err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+	operation := func(ctx context.Context) error {
+		return s.client.Play(ctx)
 	}
+	return s.executeWithStateUpdate(ctx, operation, "Start Playback")
 }
 
 func (s *SpotifyState) PausePlayback(ctx context.Context) tea.Cmd {
-
-	return func() tea.Msg {
-
-		if err := s.client.Pause(ctx); err != nil {
-			log.Printf("SpotifyState: Error pausing playback: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Pause Playback",
-				Message: err.Error(),
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after pausing: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Playback paused, but failed to refresh state: %s", err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+	operation := func(ctx context.Context) error {
+		return s.client.Pause(ctx)
 	}
+	return s.executeWithStateUpdate(ctx, operation, "Pause Playback")
 }
 
 func (s *SpotifyState) NextTrack(ctx context.Context) tea.Cmd {
-	return func() tea.Msg {
-		if err := s.client.Next(ctx); err != nil {
-			log.Printf("SpotifyState: Error skipping to next track: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Skip to Next Track",
-				Message: err.Error(),
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after skipping next: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Skipped to next track, but failed to refresh state: %s", err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
-
+	operation := func(ctx context.Context) error {
+		return s.client.Next(ctx)
 	}
+	return s.executeWithStateUpdate(ctx, operation, "Skip to Next Track")
 }
 
 func (s *SpotifyState) PreviousTrack(ctx context.Context) tea.Cmd {
-	return func() tea.Msg {
-		if err := s.client.Previous(ctx); err != nil {
-			log.Printf("SpotifyState: Error skipping to previous track: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Skip to Previous Track",
-				Message: err.Error(),
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after skipping previous: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Skipped to previous track, but failed to refresh state: %s", err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+	operation := func(ctx context.Context) error {
+		return s.client.Previous(ctx)
 	}
+	return s.executeWithStateUpdate(ctx, operation, "Skip to Previous Track")
 }
 
 func (s *SpotifyState) PlayTrack(ctx context.Context, trackID spotify.ID) tea.Cmd {
-	return func() tea.Msg {
+	operation := func(ctx context.Context) error {
 		playOptions := &spotify.PlayOptions{
 			URIs: []spotify.URI{"spotify:track:" + spotify.URI(trackID)},
 		}
-		if err := s.client.PlayOpt(ctx, playOptions); err != nil {
-			log.Printf("SpotifyState: Error playing track %s: %v", trackID, err)
-			return ErrorMsg{
-				Title:   fmt.Sprintf("Failed to Play Track %s", trackID),
-				Message: err.Error(),
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after playing track %s: %v", trackID, err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Started playing track %s, but failed to refresh state: %s", trackID, err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+		return s.client.PlayOpt(ctx, playOptions)
 	}
+	return s.executeWithStateUpdate(ctx, operation, fmt.Sprintf("Play Track %s", trackID))
 }
 
 func (s *SpotifyState) ToggleShuffleMode(ctx context.Context) tea.Cmd {
@@ -196,32 +156,12 @@ func (s *SpotifyState) ToggleShuffleMode(ctx context.Context) tea.Cmd {
 		s.mu.RUnlock()
 
 		newState := !shuffleState
-		if err := s.client.Shuffle(ctx, newState); err != nil {
-			log.Printf("SpotifyState: Error toggling shuffle mode to %v: %v", newState, err)
-			return ErrorMsg{
-				Title:   "Failed to Toggle Shuffle",
-				Message: err.Error(),
-			}
+		operation := func(ctx context.Context) error {
+			return s.client.Shuffle(ctx, newState)
 		}
 
-		time.Sleep(500 * time.Millisecond)
-		// We can do this alot smarter by checking if the track has changed
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after toggling shuffle: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Toggled shuffle, but failed to refresh state: %s", err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+		cmd := s.executeWithStateUpdate(ctx, operation, "Toggle Shuffle")
+		return cmd()
 	}
 }
 
@@ -245,30 +185,11 @@ func (s *SpotifyState) ToggleRepeatMode(ctx context.Context) tea.Cmd {
 			newState = "off"
 		}
 
-		if err := s.client.Repeat(ctx, newState); err != nil {
-			log.Printf("SpotifyState: Error setting repeat mode to %s: %v", newState, err)
-			return ErrorMsg{
-				Title:   fmt.Sprintf("Failed to Set Repeat Mode to %s", newState),
-				Message: err.Error(),
-			}
+		operation := func(ctx context.Context) error {
+			return s.client.Repeat(ctx, newState)
 		}
 
-		time.Sleep(500 * time.Millisecond)
-		state, err := s.client.PlayerState(ctx)
-		if err != nil {
-			log.Printf("SpotifyState: Error fetching playback state after setting repeat mode: %v", err)
-			return ErrorMsg{
-				Title:   "Failed to Update Playback State",
-				Message: fmt.Sprintf("Set repeat mode to %s, but failed to refresh state: %s", newState, err.Error()),
-			}
-		}
-
-		log.Println("SpotifyState: Player state:", state)
-
-		s.mu.Lock()
-		s.playerState = *state
-		s.mu.Unlock()
-
-		return PlayerStateUpdatedMsg{}
+		cmd := s.executeWithStateUpdate(ctx, operation, fmt.Sprintf("Set Repeat Mode to %s", newState))
+		return cmd()
 	}
 }
