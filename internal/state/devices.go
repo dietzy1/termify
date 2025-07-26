@@ -31,12 +31,9 @@ func (s *SpotifyState) FetchDevices(ctx context.Context) tea.Cmd {
 			}
 		}
 
-		for _, device := range devices {
-			log.Printf("SpotifyState: Found device: %v", device.Name)
-		}
-
 		activeDevice := -1
 		for i, device := range devices {
+			log.Printf("SpotifyState: Found device: %v", device.Name)
 			if device.Active {
 				activeDevice = i
 				break

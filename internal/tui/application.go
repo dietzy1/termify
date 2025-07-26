@@ -41,7 +41,6 @@ func (m applicationModel) Init() tea.Cmd {
 		m.audioPlayer.Init(),
 		m.spotifyState.FetchPlaylists(m.ctx),
 		m.spotifyState.FetchPlaybackState(m.ctx),
-		m.spotifyState.FetchQueue(m.ctx),
 		m.spotifyState.FetchDevices(m.ctx),
 	)
 }
@@ -79,8 +78,8 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.queueView = updatedQueueView
 			cmds = append(cmds, cmd)
 		}
-		queueCount := m.spotifyState.GetQueue()
-		m.navbar.queueCount = len(queueCount)
+		m.navbar.queueCount = m.spotifyState.Queue.Size()
+		return m, tea.Batch(cmds...)
 
 	case AutoplayNextTrackMsg:
 		return m.handleAutoplay()

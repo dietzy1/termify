@@ -167,10 +167,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.ViewQueue):
 		m.activeViewport = MainView
 		m.focusedModel = FocusQueue
-		return m, tea.Batch(
-			tea.WindowSize(),
-			m.spotifyState.FetchQueue(m.ctx),
-		), true
+		return m, tea.WindowSize(), true
 
 	case key.Matches(msg, DefaultKeyMap.Device):
 		m.focusedModel = FocusDeviceSelector

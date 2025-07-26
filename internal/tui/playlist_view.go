@@ -93,16 +93,12 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						track := tracks[idx-1]
 						log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
 
-						// Mark track as queued and set timer to clear the highlight
 						m.queuedTracks[track.ID] = true
-
-						// Update the table to show the highlight
 						m.updateTableWithTracks(tracks)
-
-						// Return multiple commands: add to queue and start highlight timer
+						m.spotifyState.Queue.Enqueue(track)
 						return m, tea.Batch(
-							m.spotifyState.AddToQueue(m.ctx, track.ID),
-							tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
+							state.UpdateQueue(),
+							tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
 								return clearQueuedHighlightMsg{TrackID: track.ID}
 							}),
 						)

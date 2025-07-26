@@ -144,11 +144,7 @@ func (m audioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.progress > int(playerState.Item.Duration/1000) {
 				m.progress = 0
-
-				// Check queue and emit autoplay message when song ends
 				return m, tea.Batch(
-					m.spotifyState.FetchQueue(m.ctx),
-					m.spotifyState.FetchPlaybackState(m.ctx),
 					func() tea.Msg { return AutoplayNextTrackMsg{} },
 					tickCmd(),
 				)

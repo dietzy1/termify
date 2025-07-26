@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"context"
+	"fmt"
+	"io"
 	"log"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -9,12 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
 )
-
-// TODO: Requirements for the queue:
-// Show current song playing
-// Show next in line songs in the queue
-// Have a clear button // Requires queue redesign since no API support
-// Ability to play next songs by pressing select
 
 var _ tea.Model = (*queueModel)(nil)
 
@@ -35,24 +32,94 @@ type queueModel struct {
 	isFocused    bool
 }
 
-func newQueue(spotifyState *state.SpotifyState) queueModel {
-	delegate := list.NewDefaultDelegate()
+type numberedDelegate struct {
+	isFocused bool
+}
+
+func (d numberedDelegate) Height() int                             { return 2 }
+func (d numberedDelegate) Spacing() int                            { return 1 }
+func (d numberedDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d numberedDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(queueItem)
+	if !ok {
+		return
+	}
 
 	const itemWidth = 28
+	isSelected := index == m.Index()
 
-	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(WhiteTextColor).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
+	titleColor := WhiteTextColor
+	descColor := TextColor
+	borderColor := WhiteTextColor
 
-	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
+	if isSelected && d.isFocused {
+		titleColor = PrimaryColor
+		descColor = PrimaryColor
+		borderColor = PrimaryColor
+	} else if isSelected {
+		borderColor = WhiteTextColor
+	}
 
-	l := list.New([]list.Item{}, delegate, itemWidth+2, 0) // +2 for borders
+	var titleStyle, descStyle lipgloss.Style
+
+	if isSelected {
+		titleStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, false, false, true).
+			BorderForeground(lipgloss.Color(borderColor)).
+			Foreground(lipgloss.Color(titleColor)).
+			Padding(0, 0, 0, 1).
+			Bold(true).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+
+		descStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(descColor)).
+			Padding(0, 0, 0, 2).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+	} else {
+		titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(titleColor)).
+			Padding(0, 0, 0, 2).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+
+		descStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(descColor)).
+			Padding(0, 0, 0, 2).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+	}
+
+	numberedTitle := fmt.Sprintf("%d. %s", index+1, i.title)
+
+	numberPrefix := fmt.Sprintf("%d. ", index)
+	descIndent := len(numberPrefix) // +1 for extra space
+
+	if isSelected {
+		descStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(descColor)).
+			Padding(0, 0, 0, 2+descIndent).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+	} else {
+		descStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(descColor)).
+			Padding(0, 0, 0, 2+descIndent).
+			Width(itemWidth).
+			MaxWidth(itemWidth)
+	}
+
+	fmt.Fprint(w, titleStyle.Render(numberedTitle))
+	fmt.Fprint(w, "\n")
+	fmt.Fprint(w, descStyle.Render(i.desc))
+}
+
+func newQueue(spotifyState *state.SpotifyState) queueModel {
+	delegate := numberedDelegate{isFocused: false}
+
+	const itemWidth = 28
+	l := list.New([]list.Item{}, delegate, itemWidth+2, 0)
 	l.Title = "Next in Queue"
 	l.Styles.TitleBar = lipgloss.NewStyle().
 		Padding(0, 0, 1, 2).
@@ -92,7 +159,27 @@ func (m queueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down):
+		// Delete key to clear the specific item
+		case key.Matches(msg, DefaultKeyMap.Copy):
+			_, err := m.spotifyState.Queue.PopAt(m.list.Index())
+			if err != nil {
+				log.Println("Error popping track from queue:", err)
+			}
+
+			return m, state.UpdateQueue()
+
+		// Handle select key to play the selected track
+		case key.Matches(msg, DefaultKeyMap.Select):
+
+			track, err := m.spotifyState.Queue.PopAt(m.list.Index())
+			if err != nil {
+				log.Println("Error popping track from queue:", err)
+			}
+
+			return m, tea.Batch(
+				m.spotifyState.PlayTrack(context.TODO(), track.ID),
+				state.UpdateQueue(),
+			)
 
 		}
 	}
@@ -102,46 +189,7 @@ func (m queueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m queueModel) View() string {
-	// Update delegate styles based on focus
-	delegate := list.NewDefaultDelegate()
-	const itemWidth = 28
-
-	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(WhiteTextColor).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	selectedTitleColor := WhiteTextColor
-	if m.isFocused {
-		selectedTitleColor = PrimaryColor
-	}
-	selectedDescColor := TextColor
-	if m.isFocused {
-		selectedDescColor = PrimaryColor
-	}
-
-	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(selectedTitleColor)).
-		Foreground(lipgloss.Color(selectedTitleColor)).
-		Padding(0, 0, 0, 1).
-		Bold(true).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(selectedDescColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
+	delegate := numberedDelegate{isFocused: m.isFocused}
 	m.list.SetDelegate(delegate)
 
 	return lipgloss.NewStyle().
@@ -153,8 +201,8 @@ func (m queueModel) View() string {
 }
 
 func (m queueModel) convertQueueToItems() []list.Item {
+	queueItems := m.spotifyState.Queue.List()
 
-	queueItems := m.spotifyState.GetQueue()
 	log.Println("Queue items found in queue model: ", queueItems)
 
 	items := make([]list.Item, 0, len(queueItems))
@@ -163,7 +211,7 @@ func (m queueModel) convertQueueToItems() []list.Item {
 		if title == "" {
 			title = "Untitled Playlist"
 		}
-		desc := item.SimpleTrack.Artists[0].Name
+		desc := item.Artists[0].Name
 		if desc == "" {
 			desc = "Unknown Owner"
 		}

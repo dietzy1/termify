@@ -48,7 +48,7 @@ type SpotifyState struct {
 		playlists []spotify.SimplePlaylist
 	}
 
-	queue []spotify.FullTrack
+	Queue Queue
 
 	selectedID spotify.ID
 }
@@ -70,23 +70,6 @@ func (s *SpotifyState) GetOathToken() *oauth2.Token {
 		return nil
 	}
 	return token
-}
-
-func (s *SpotifyState) IsQueueEmpty() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if len(s.queue) == 0 {
-		return true
-	}
-
-	// Check if all items in the queue are the same
-	for i := 1; i < len(s.queue); i++ {
-		if s.queue[i].ID != s.queue[0].ID {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *SpotifyState) GetDeviceState() []spotify.PlayerDevice {
@@ -191,18 +174,6 @@ func (s *SpotifyState) GetSearchResultPlaylists() []spotify.SimplePlaylist {
 	return playlistsCopy
 }
 
-func (s *SpotifyState) GetQueue() []spotify.FullTrack {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if s.queue == nil {
-		return nil
-	}
-	queueCopy := make([]spotify.FullTrack, len(s.queue))
-	copy(queueCopy, s.queue)
-	return queueCopy
-}
-
 func (s *SpotifyState) GetSelectedID() spotify.ID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -253,24 +224,6 @@ func (s *SpotifyState) setSearchResults(tracks []spotify.FullTrack, artists []sp
 	s.searchResults.artists = artists
 	s.searchResults.albums = albums
 	s.searchResults.playlists = playlists
-}
-
-func (s *SpotifyState) SetQueue(queue []spotify.FullTrack) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.queue = queue
-}
-
-func (s *SpotifyState) AddTrackToQueueLocal(track spotify.FullTrack) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.queue = append(s.queue, track)
-}
-
-func (s *SpotifyState) ClearQueue() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.queue = nil
 }
 
 func (s *SpotifyState) SetSelectedID(id spotify.ID) {

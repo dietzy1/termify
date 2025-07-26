@@ -111,8 +111,11 @@ func (m searchViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, DefaultKeyMap.AddToQueue) {
 				if len(m.trackList.Items()) > 0 {
 					index := m.trackList.Index()
-					id := m.spotifyState.GetSearchResultTracks()[index].ID
-					return m, m.spotifyState.AddToQueue(m.ctx, id)
+					fullTrack := m.spotifyState.GetSearchResultTracks()[index]
+
+					m.spotifyState.Queue.Enqueue(fullTrack.SimpleTrack)
+					return m, state.UpdateQueue()
+
 				}
 			}
 
