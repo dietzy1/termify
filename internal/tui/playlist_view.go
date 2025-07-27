@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
@@ -28,19 +29,28 @@ type playlistViewModel struct {
 	spotifyState   *state.SpotifyState
 	queuedTracks   map[spotify.ID]bool // Track which songs have been queued recently
 	highlightTimer *time.Timer         // Timer to clear the highlight
+	spinner        spinner.Model
 }
 
 func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) playlistViewModel {
+
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
+
+	s.Spinner.FPS = time.Second * 1 / 2
+
 	return playlistViewModel{
 		ctx:          ctx,
 		table:        createPlaylistTable(),
 		spotifyState: spotifyState,
 		queuedTracks: make(map[spotify.ID]bool),
+		spinner:      s,
 	}
 }
 
 func (m playlistViewModel) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 // Update handles messages and updates the playlist view
@@ -58,6 +68,13 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.table = m.table.WithTargetWidth(m.width).WithMinimumHeight(m.height).WithPageSize(m.height - 6)
 		log.Printf("PlaylistView width: %d, height: %d", m.width, m.height)
+		return m, nil
+
+	case spinner.TickMsg:
+		var spinnerCmd tea.Cmd
+		m.spinner, spinnerCmd = m.spinner.Update(msg)
+		m.updateTableWithTracks(m.spotifyState.GetTracks())
+		return m, spinnerCmd
 
 	case state.TracksUpdatedMsg:
 		tracks := m.spotifyState.GetTracks()
@@ -72,38 +89,26 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tableCmd
 
 		case key.Matches(msg, DefaultKeyMap.Select):
-			if selected := m.table.HighlightedRow(); selected.Data != nil {
-				if numStr, ok := selected.Data["#"].(string); ok {
-					tracks := m.spotifyState.GetTracks()
-					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
-						track := tracks[idx-1]
-						log.Printf("PlaylistView: Selected track: %s", track.ID)
-						return m, m.spotifyState.PlayTrack(m.ctx, track.ID)
-					}
-				}
+			if track := m.getSelectedTrack(); track != nil {
+				log.Printf("PlaylistView: Selected track: %s", track.ID)
+				return m, m.spotifyState.PlayTrack(m.ctx, track.ID)
 			}
-
 			return m, nil
 
 		case key.Matches(msg, DefaultKeyMap.AddToQueue):
-			if selected := m.table.HighlightedRow(); selected.Data != nil {
-				if numStr, ok := selected.Data["#"].(string); ok {
-					tracks := m.spotifyState.GetTracks()
-					if idx, err := strconv.Atoi(numStr); err == nil && idx > 0 && idx <= len(tracks) {
-						track := tracks[idx-1]
-						log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
+			if track := m.getSelectedTrack(); track != nil {
+				log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
 
-						m.queuedTracks[track.ID] = true
-						m.updateTableWithTracks(tracks)
-						m.spotifyState.Queue.Enqueue(track)
-						return m, tea.Batch(
-							state.UpdateQueue(),
-							tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
-								return clearQueuedHighlightMsg{TrackID: track.ID}
-							}),
-						)
-					}
-				}
+				m.queuedTracks[track.ID] = true
+				tracks := m.spotifyState.GetTracks()
+				m.updateTableWithTracks(tracks)
+				m.spotifyState.Queue.Enqueue(*track)
+				return m, tea.Batch(
+					state.UpdateQueue(),
+					tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
+						return clearQueuedHighlightMsg{TrackID: track.ID}
+					}),
+				)
 			}
 		}
 	case clearQueuedHighlightMsg:
@@ -215,8 +220,17 @@ func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) 
 			title = title + " " + queuedStyle.Render("(Added to queue)")
 		}
 
+		playerState := m.spotifyState.GetPlayerState()
+
+		var indexDisplay string
+		if playerState.Item != nil && string(track.ID) == string(playerState.Item.ID) {
+			indexDisplay = m.spinner.View()
+		} else {
+			indexDisplay = fmt.Sprintf("%d", i+1)
+		}
+
 		rows = append(rows, table.NewRow(table.RowData{
-			"#":        fmt.Sprintf("%d", i+1),
+			"#":        indexDisplay,
 			"title":    title,
 			"artist":   artistName,
 			"album":    albumName,
@@ -291,4 +305,24 @@ func (m *playlistViewModel) getNextTrack() spotify.ID {
 	// If current track not found in playlist, return the first track
 	log.Println("Current track not found in playlist, returning first track")
 	return spotify.ID(tracks[0].ID)
+}
+
+func (m *playlistViewModel) getSelectedTrack() *spotify.SimpleTrack {
+	selected := m.table.HighlightedRow()
+	if selected.Data == nil {
+		return nil
+	}
+
+	numStr, ok := selected.Data["#"].(string)
+	if !ok {
+		return nil
+	}
+
+	tracks := m.spotifyState.GetTracks()
+	idx, err := strconv.Atoi(numStr)
+	if err != nil || idx <= 0 || idx > len(tracks) {
+		return nil
+	}
+
+	return &tracks[idx-1]
 }

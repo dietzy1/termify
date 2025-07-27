@@ -129,6 +129,12 @@ func newQueue(spotifyState *state.SpotifyState) queueModel {
 		Foreground(lipgloss.Color(WhiteTextColor)).
 		Padding(0, 1)
 
+	l.Styles.NoItems = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(TextColor)).
+		Padding(0, 2).
+		Width(itemWidth + 2).
+		MaxWidth(itemWidth + 2)
+
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
@@ -191,6 +197,36 @@ func (m queueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m queueModel) View() string {
 	delegate := numberedDelegate{isFocused: m.isFocused}
 	m.list.SetDelegate(delegate)
+
+	if len(m.list.Items()) == 0 {
+		titleStyle := lipgloss.NewStyle().
+			Background(lipgloss.Color(BorderColor)).
+			Foreground(lipgloss.Color(WhiteTextColor)).
+			Padding(0, 1)
+
+		titleBarStyle := lipgloss.NewStyle().
+			Padding(0, 0, 1, 2).
+			Width(30)
+
+		title := titleBarStyle.Render(titleStyle.Render("Next in Queue"))
+
+		emptyStyle := lipgloss.NewStyle().
+			Width(28).
+			Padding(0, 0, 0, 2).
+			Foreground(lipgloss.Color(TextColor)).
+			Italic(true)
+
+		emptyMessage := emptyStyle.Render("No tracks in queue\nAdd some music to get started!")
+
+		content := lipgloss.JoinVertical(lipgloss.Left, title, emptyMessage)
+
+		return lipgloss.NewStyle().
+			Height(m.height - 2).
+			MaxHeight(m.height).
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(getBorderStyle(m.isFocused)).
+			Render(content)
+	}
 
 	return lipgloss.NewStyle().
 		Height(m.height - 2).

@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
@@ -39,6 +40,7 @@ func (m applicationModel) Init() tea.Cmd {
 		tea.WindowSize(),
 		m.searchBar.Init(),
 		m.audioPlayer.Init(),
+		m.playlistView.Init(),
 		m.spotifyState.FetchPlaylists(m.ctx),
 		m.spotifyState.FetchPlaybackState(m.ctx),
 		m.spotifyState.FetchDevices(m.ctx),
@@ -190,6 +192,14 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.audioPlayer = updatedAudioPlayer
 			cmds = append(cmds, cmd)
 		}
+		return m, tea.Batch(cmds...)
+	case spinner.TickMsg:
+		if updatedPlaylistView, cmd, ok := updateSubmodel(m.playlistView, msg, m.playlistView); ok {
+			m.playlistView = updatedPlaylistView
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
 	case cursor.BlinkMsg:
 		if m.focusedModel != FocusSearchBar {
 			return m, nil
