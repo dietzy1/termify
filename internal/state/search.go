@@ -14,11 +14,7 @@ func (s *SpotifyState) SearchEverything(ctx context.Context, query string) tea.C
 	return func() tea.Msg {
 		log.Printf("SpotifyState: Searching for: %s", query)
 		if query == "" {
-			log.Printf("SpotifyState: Invalid query")
-			return ErrorMsg{
-				Title:   "Invalid Search Query",
-				Message: "Search query cannot be empty.",
-			}
+			return nil
 		}
 
 		results, err := s.client.Search(ctx, query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist)

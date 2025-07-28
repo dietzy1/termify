@@ -89,7 +89,14 @@ func (m *applicationModel) cycleFocus() tea.Cmd {
 		} else {
 			m.focusedModel = FocusPlaylistView
 		}
+	case FocusDeviceSelector:
+		m.focusedModel = FocusLibrary
+		m.deviceSelector.Blur()
+	case FocusQueue:
+		m.focusedModel = FocusLibrary
+		return tea.WindowSize()
 	}
+
 	return nil
 }
 
@@ -184,7 +191,8 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		}
 		return m, m.spotifyState.StartPlayback(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Next):
-		return m, m.spotifyState.NextTrack(m.ctx), true
+		model, cmd := m.handleAutoplay()
+		return model, cmd, true
 	case key.Matches(msg, DefaultKeyMap.Previous):
 		return m, m.spotifyState.PreviousTrack(m.ctx), true
 	case key.Matches(msg, DefaultKeyMap.Shuffle):

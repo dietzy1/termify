@@ -90,7 +90,6 @@ func (s *SpotifyState) GetPlayerState() spotify.PlayerState {
 	return s.playerState
 }
 
-// FIXME: Reimplement this with elm architecture
 func (s *SpotifyState) GetPlaylists() []spotify.SimplePlaylist {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -179,12 +178,6 @@ func (s *SpotifyState) GetSelectedID() spotify.ID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.selectedID
-}
-
-func (s *SpotifyState) ClearTracksCache() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.tracksCache = make(map[spotify.ID][]spotify.SimpleTrack)
 }
 
 func (s *SpotifyState) setSearchResults(tracks []spotify.FullTrack, artists []spotify.FullArtist,

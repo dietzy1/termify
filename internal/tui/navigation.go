@@ -105,7 +105,7 @@ func (m applicationModel) renderNavigationHelp() string {
 		helpText = "←/→: Navigate devices | Enter: Select device | Esc: Back"
 	case FocusQueue:
 		focusName = "View queue"
-		helpText = "Tab: Switch to library | Enter: Play selected track | Esc: Back"
+		helpText = "Tab: Switch to library | Enter: Play selected track | C: Clear item | Esc: Back"
 	}
 
 	switch m.activeViewport {

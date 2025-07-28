@@ -125,13 +125,6 @@ func (s *SpotifyState) PausePlayback(ctx context.Context) tea.Cmd {
 	return s.executeWithStateUpdate(ctx, operation, "Pause Playback")
 }
 
-func (s *SpotifyState) NextTrack(ctx context.Context) tea.Cmd {
-	operation := func(ctx context.Context) error {
-		return s.client.Next(ctx)
-	}
-	return s.executeWithStateUpdate(ctx, operation, "Skip to Next Track")
-}
-
 func (s *SpotifyState) PreviousTrack(ctx context.Context) tea.Cmd {
 	operation := func(ctx context.Context) error {
 		return s.client.Previous(ctx)

@@ -132,6 +132,8 @@ func (m playlistViewModel) View() string {
 		lipgloss.NewStyle().BorderForeground(getBorderStyle(m.isFocused)),
 	)
 
+	m.table = m.table.Focused(m.isFocused)
+
 	currentPage := m.table.CurrentPage()
 	maxPage := m.table.MaxPages()
 	playlists := m.spotifyState.GetPlaylists()
