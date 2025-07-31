@@ -85,7 +85,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down):
+		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down, DefaultKeyMap.Left, DefaultKeyMap.Right):
 			m.list, cmd = m.list.Update(msg)
 			return m, tea.Batch(cmd, m.spotifyState.SelectPlaylist(string(m.list.SelectedItem().(playlist).uri)))
 		}

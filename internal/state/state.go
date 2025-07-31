@@ -13,16 +13,6 @@ type ErrorMsg struct {
 	Message string
 }
 
-type PlaylistsUpdatedMsg struct {
-}
-
-type PlaylistSelectedMsg struct {
-	PlaylistID string
-}
-
-type TracksUpdatedMsg struct {
-}
-
 type PlayerStateUpdatedMsg struct {
 }
 
@@ -38,8 +28,8 @@ type SpotifyState struct {
 	playlists []spotify.SimplePlaylist
 	tracks    []spotify.SimpleTrack
 
-	// Cache map for tracks by source ID (playlist, album, artist)
-	tracksCache map[spotify.ID][]spotify.SimpleTrack
+	fetchingPages map[string]bool
+	tracksCache   map[spotify.ID]*CacheEntry
 
 	searchResults struct {
 		tracks    []spotify.FullTrack
@@ -48,7 +38,7 @@ type SpotifyState struct {
 		playlists []spotify.SimplePlaylist
 	}
 
-	Queue Queue
+	Queue QueueManager
 
 	selectedID spotify.ID
 }
@@ -56,13 +46,13 @@ type SpotifyState struct {
 func NewSpotifyState(client *spotify.Client) *SpotifyState {
 	log.Printf("Creating new SpotifyState with client: %v", client != nil)
 	return &SpotifyState{
-		client:      client,
-		mu:          sync.RWMutex{},
-		tracksCache: make(map[spotify.ID][]spotify.SimpleTrack),
+		client:        client,
+		mu:            sync.RWMutex{},
+		tracksCache:   make(map[spotify.ID]*CacheEntry),
+		fetchingPages: make(map[string]bool),
 	}
 }
 
-// Function which logs the content of the OATH token in the client
 func (s *SpotifyState) GetOathToken() *oauth2.Token {
 	token, err := s.client.Token()
 	if err != nil {
@@ -75,7 +65,6 @@ func (s *SpotifyState) GetOathToken() *oauth2.Token {
 func (s *SpotifyState) GetDeviceState() []spotify.PlayerDevice {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	// Return a copy to prevent concurrent modification
 	if s.deviceState == nil {
 		return nil
 	}
@@ -110,20 +99,6 @@ func (s *SpotifyState) GetTracks() []spotify.SimpleTrack {
 	tracksCopy := make([]spotify.SimpleTrack, len(s.tracks))
 	copy(tracksCopy, s.tracks)
 	return tracksCopy
-}
-
-func (s *SpotifyState) GetTracksCached(sourceID spotify.ID) ([]spotify.SimpleTrack, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	tracks, exists := s.tracksCache[sourceID]
-	if !exists {
-		return nil, false
-	}
-
-	tracksCopy := make([]spotify.SimpleTrack, len(tracks))
-	copy(tracksCopy, tracks)
-	return tracksCopy, true
 }
 
 func (s *SpotifyState) GetSearchResultTracks() []spotify.FullTrack {

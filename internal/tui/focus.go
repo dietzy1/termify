@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"log"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -125,7 +123,6 @@ func (m *applicationModel) cycleFocusBackward() tea.Cmd {
 
 func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
 	var cmd tea.Cmd
-	log.Println("Handling global key:", msg)
 
 	// All return key cases
 	switch {
@@ -206,7 +203,6 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.VolumeMute):
 		return m, m.spotifyState.Mute(m.ctx), true
 	}
-	log.Println("Unhandled key:", msg)
 
 	return m, cmd, false
 }

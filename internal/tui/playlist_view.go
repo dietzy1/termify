@@ -20,7 +20,20 @@ type clearQueuedHighlightMsg struct {
 	TrackID spotify.ID
 }
 
-// PlaylistViewModel represents the table view for playlists and tracks
+type TrackRowType int
+
+const (
+	TrackRowLoaded TrackRowType = iota
+	TrackRowLoading
+)
+
+type TrackRow struct {
+	Type     TrackRowType
+	Track    *spotify.SimpleTrack
+	Index    int
+	IsQueued bool
+}
+
 type playlistViewModel struct {
 	ctx            context.Context
 	width, height  int
@@ -37,7 +50,6 @@ func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) play
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
-
 	s.Spinner.FPS = time.Second * 1 / 2
 
 	return playlistViewModel{
@@ -50,12 +62,13 @@ func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) play
 }
 
 func (m playlistViewModel) Init() tea.Cmd {
-	return m.spinner.Tick
+	return tea.Batch(m.spinner.Tick)
 }
 
 // Update handles messages and updates the playlist view
 func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -71,21 +84,55 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		var spinnerCmd tea.Cmd
+		var spinnerCmd, loadingSpinnerCmd tea.Cmd
 		m.spinner, spinnerCmd = m.spinner.Update(msg)
-		m.updateTableWithTracks(m.spotifyState.GetTracks())
-		return m, spinnerCmd
+		m.updateTableWithTracksAndLoading()
+		return m, tea.Batch(spinnerCmd, loadingSpinnerCmd)
 
 	case state.TracksUpdatedMsg:
-		tracks := m.spotifyState.GetTracks()
-		m.updateTableWithTracks(tracks)
+		m.updateTableWithTracksAndLoading()
+
+		if msg.NextPage != nil {
+			currentPage := m.table.CurrentPage()
+			pageSize := m.height - headerFooterHeight
+			if pageSize <= 0 {
+				pageSize = 1
+			}
+
+			totalLoadedTracks := len(m.spotifyState.GetTracks())
+			maxPageWithCurrentData := (totalLoadedTracks + pageSize - 1) / pageSize
+
+			if currentPage >= maxPageWithCurrentData-1 {
+				log.Printf("PlaylistView: Prefetching next page (current: %d, max loaded: %d)",
+					currentPage, maxPageWithCurrentData)
+				return m, m.spotifyState.FetchNextTracksPage(m.ctx, msg.SourceID, msg.NextPage)
+			}
+		}
+
+		log.Printf("PlaylistView: No prefetch needed (current page: %d, total tracks: %d)",
+			m.table.CurrentPage(), len(m.spotifyState.GetTracks()))
+		return m, nil
 
 	// Handle keyboard events for table navigation
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, DefaultKeyMap.Left, DefaultKeyMap.Right):
+			var tableCmd tea.Cmd
+			m.table, tableCmd = m.table.Update(msg)
+			prefetchCmd := m.checkAndPrefetchIfNeeded()
+			if prefetchCmd != nil {
+				return m, tea.Batch(tableCmd, prefetchCmd)
+			}
+			return m, tableCmd
+
 		case key.Matches(msg, DefaultKeyMap.Up, DefaultKeyMap.Down):
 			var tableCmd tea.Cmd
 			m.table, tableCmd = m.table.Update(msg)
+
+			prefetchCmd := m.checkAndPrefetchIfNeeded()
+			if prefetchCmd != nil {
+				return m, tea.Batch(tableCmd, prefetchCmd)
+			}
 			return m, tableCmd
 
 		case key.Matches(msg, DefaultKeyMap.Select):
@@ -100,8 +147,7 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				log.Printf("PlaylistView: Adding track to queue: %s", track.ID)
 
 				m.queuedTracks[track.ID] = true
-				tracks := m.spotifyState.GetTracks()
-				m.updateTableWithTracks(tracks)
+				m.updateTableWithTracksAndLoading()
 				m.spotifyState.Queue.Enqueue(*track)
 				return m, tea.Batch(
 					state.UpdateQueue(),
@@ -110,16 +156,27 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}),
 				)
 			}
+			return m, nil
 		}
 	case clearQueuedHighlightMsg:
 		delete(m.queuedTracks, msg.TrackID)
-		tracks := m.spotifyState.GetTracks()
-		m.updateTableWithTracks(tracks)
+		m.updateTableWithTracksAndLoading()
 		return m, nil
 	}
 
-	// Forward all other messages to the table
+	// Forward all other messages to the table, but check for page changes
+	oldPage := m.table.CurrentPage()
 	m.table, cmd = m.table.Update(msg)
+	newPage := m.table.CurrentPage()
+
+	// If page changed, check if we need to prefetch
+	if oldPage != newPage {
+		prefetchCmd := m.checkAndPrefetchIfNeeded()
+		if prefetchCmd != nil {
+			cmd = tea.Batch(cmd, prefetchCmd)
+		}
+	}
+
 	return m, cmd
 }
 
@@ -131,13 +188,12 @@ func (m playlistViewModel) View() string {
 	m.table = m.table.WithBaseStyle(
 		lipgloss.NewStyle().BorderForeground(getBorderStyle(m.isFocused)),
 	)
-
 	m.table = m.table.Focused(m.isFocused)
 
-	currentPage := m.table.CurrentPage()
-	maxPage := m.table.MaxPages()
-	playlists := m.spotifyState.GetPlaylists()
 	selectedId := m.spotifyState.GetSelectedID()
+	playlists := m.spotifyState.GetPlaylists()
+	currentPage := m.table.CurrentPage()
+	maxPage := m.calculateMaxPage(m.spotifyState.GetTotalTracks(selectedId))
 
 	name := "Unknown Playlist"
 	for _, playlist := range playlists {
@@ -193,54 +249,81 @@ func (m *playlistViewModel) SetFocus(isFocused bool) {
 	m.isFocused = isFocused
 }
 
-func (m *playlistViewModel) updateTableWithTracks(tracks []spotify.SimpleTrack) {
-	var rows []table.Row
-	for i, track := range tracks {
-		// Get primary artist name
-		artistName := "Unknown Artist"
-		if len(track.Artists) > 0 {
-			artistName = track.Artists[0].Name
-		}
+// updateTableWithTracksAndLoading creates a combined view of loaded tracks and loading placeholders
+func (m *playlistViewModel) updateTableWithTracksAndLoading() {
+	selectedID := m.spotifyState.GetSelectedID()
+	if selectedID == "" {
+		return
+	}
 
-		// Get album name
-		albumName := "Unknown Album"
-		if track.Album.Name != "" {
-			albumName = track.Album.Name
-		}
+	loadedTracks := m.spotifyState.GetTracks()
+	totalTracks := m.spotifyState.GetTotalTracks(selectedID)
 
-		// Format duration
-		duration := formatTrackDuration(int(track.Duration))
+	rows := make([]table.Row, totalTracks)
+	playerState := m.spotifyState.GetPlayerState()
 
-		// Check if this track was recently queued, if so add the "QUEUED" highlight to the title
-		title := track.Name
-		if m.queuedTracks[track.ID] {
-			// Create a highlighted title that shows it's been queued
-			queuedStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(PrimaryColor)).
-				Bold(true)
+	// Add loaded tracks
+	for i, track := range loadedTracks {
+		rows[i] = m.createTrackRow(track, i, &playerState)
+	}
 
-			title = title + " " + queuedStyle.Render("(Added to queue)")
-		}
-
-		playerState := m.spotifyState.GetPlayerState()
-
-		var indexDisplay string
-		if playerState.Item != nil && string(track.ID) == string(playerState.Item.ID) {
-			indexDisplay = m.spinner.View()
-		} else {
-			indexDisplay = fmt.Sprintf("%d", i+1)
-		}
-
-		rows = append(rows, table.NewRow(table.RowData{
-			"#":        indexDisplay,
-			"title":    title,
-			"artist":   artistName,
-			"album":    albumName,
-			"duration": duration,
-		}))
+	// Add loading placeholders for remaining tracks
+	for i := len(loadedTracks); i < totalTracks; i++ {
+		rows[i] = m.createLoadingRow(i)
 	}
 
 	m.table = m.table.WithRows(rows)
+}
+
+func (m *playlistViewModel) createTrackRow(track spotify.SimpleTrack, index int, playerState *spotify.PlayerState) table.Row {
+	artistName := "Unknown Artist"
+	if len(track.Artists) > 0 {
+		artistName = track.Artists[0].Name
+	}
+
+	albumName := "Unknown Album"
+	if track.Album.Name != "" {
+		albumName = track.Album.Name
+	}
+
+	duration := formatTrackDuration(int(track.Duration))
+
+	title := track.Name
+	if m.queuedTracks[track.ID] {
+		queuedStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(PrimaryColor)).
+			Bold(true)
+		title = title + " " + queuedStyle.Render("(Added to queue)")
+	}
+
+	var indexDisplay string
+	if playerState != nil && playerState.Item != nil && string(track.ID) == string(playerState.Item.ID) {
+		indexDisplay = m.spinner.View()
+	} else {
+		indexDisplay = fmt.Sprintf("%d", index+1)
+	}
+
+	return table.NewRow(table.RowData{
+		"#":        indexDisplay,
+		"title":    title,
+		"artist":   artistName,
+		"album":    albumName,
+		"duration": duration,
+	})
+}
+
+func (m *playlistViewModel) createLoadingRow(index int) table.Row {
+	loadingStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8")).
+		Italic(true)
+
+	return table.NewRow(table.RowData{
+		"#":        fmt.Sprintf("%d", index+1),
+		"title":    loadingStyle.Render("Loading"),
+		"artist":   "--:--",
+		"album":    "--:--",
+		"duration": "--:--",
+	})
 }
 
 func createPlaylistTable() table.Model {
@@ -270,9 +353,7 @@ func createPlaylistTable() table.Model {
 }
 
 // GetNextTrack returns the ID of the next track to play when autoplay is triggered
-// It returns the next track after the currently playing one, or the first track if none is playing
 func (m *playlistViewModel) getNextTrack() spotify.ID {
-
 	tracks := m.spotifyState.GetTracks()
 	if len(tracks) == 0 {
 		log.Println("No tracks in playlist to autoplay")
@@ -323,8 +404,63 @@ func (m *playlistViewModel) getSelectedTrack() *spotify.SimpleTrack {
 	tracks := m.spotifyState.GetTracks()
 	idx, err := strconv.Atoi(numStr)
 	if err != nil || idx <= 0 || idx > len(tracks) {
+		// User selected a loading row, return nil
 		return nil
 	}
 
 	return &tracks[idx-1]
+}
+
+// 2 for header, 4 for footer
+const headerFooterHeight = 6
+
+func (m playlistViewModel) calculateMaxPage(totalTracks int) int {
+	if totalTracks == 0 {
+		return 1
+	}
+
+	pageSize := m.height - headerFooterHeight
+	if pageSize <= 0 {
+		return 1
+	}
+
+	maxPage := (totalTracks + pageSize - 1) / pageSize
+	return maxPage
+}
+
+// checkAndPrefetchIfNeeded checks if we need to prefetch more data based on current position
+func (m *playlistViewModel) checkAndPrefetchIfNeeded() tea.Cmd {
+	selectedID := m.spotifyState.GetSelectedID()
+	if selectedID == "" {
+		return nil
+	}
+
+	// Check if there are more tracks to load
+	if !m.spotifyState.HasMoreTracks(selectedID) {
+		return nil
+	}
+
+	// Get cache entry to check for next page
+	cacheEntry, exists := m.spotifyState.GetCachedTracks(selectedID)
+	if !exists || cacheEntry.NextPage == nil {
+		return nil
+	}
+
+	currentPage := m.table.CurrentPage()
+	pageSize := m.height - headerFooterHeight
+	if pageSize <= 0 {
+		pageSize = 1
+	}
+
+	totalLoadedTracks := len(cacheEntry.Tracks)
+	maxPageWithCurrentData := (totalLoadedTracks + pageSize - 1) / pageSize
+
+	// Prefetch if we're on the last page of loaded data or one page before
+	if currentPage >= maxPageWithCurrentData-1 {
+		log.Printf("PlaylistView: Navigation triggered prefetch (current: %d, max loaded: %d)",
+			currentPage, maxPageWithCurrentData)
+		return m.spotifyState.FetchNextTracksPage(m.ctx, selectedID, cacheEntry.NextPage)
+	}
+
+	return nil
 }

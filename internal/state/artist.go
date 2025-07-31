@@ -21,17 +21,23 @@ func (s *SpotifyState) FetchTopTracks(ctx context.Context, artistId spotify.ID) 
 		}
 
 		s.mu.RLock()
-		cachedTracks, exists := s.tracksCache[artistId]
+		cachedEntry, exists := s.tracksCache[artistId]
 		s.mu.RUnlock()
 
 		if exists {
-			log.Printf("SpotifyState: Found cached top tracks for artist %s", artistId)
+			log.Printf("SpotifyState: Found cached tracks for artist %s (%d tracks)",
+				artistId, len(cachedEntry.Tracks))
+
 			s.mu.Lock()
-			s.tracks = cachedTracks
+			s.tracks = make([]spotify.SimpleTrack, len(cachedEntry.Tracks))
+			copy(s.tracks, cachedEntry.Tracks)
 			s.mu.Unlock()
 
-			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for artist %s", len(cachedTracks), artistId)
-			return TracksUpdatedMsg{}
+			return TracksUpdatedMsg{
+				SourceID: artistId,
+				Tracks:   cachedEntry.Tracks,
+				NextPage: nil,
+			}
 		}
 
 		topTracks, err := s.client.GetArtistsTopTracks(ctx, artistId, "US")
@@ -49,12 +55,14 @@ func (s *SpotifyState) FetchTopTracks(ctx context.Context, artistId spotify.ID) 
 			simpleTracks = append(simpleTracks, track.SimpleTrack)
 		}
 
-		s.mu.Lock()
-		s.tracks = simpleTracks
-		s.tracksCache[artistId] = simpleTracks
-		s.mu.Unlock()
+		s.updateCacheEntry(artistId, simpleTracks, nil, false, len(simpleTracks), false)
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d top tracks for artist %s", len(simpleTracks), artistId)
-		return TracksUpdatedMsg{}
+
+		return TracksUpdatedMsg{
+			SourceID: artistId,
+			Tracks:   simpleTracks,
+			NextPage: nil,
+		}
 	}
 }

@@ -163,7 +163,6 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
-		log.Println("Updating model with message type", msg)
 		updatedModel, cmd, handled := m.handleGlobalKeys(msg)
 		m = updatedModel
 		if handled {

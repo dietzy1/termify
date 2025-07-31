@@ -14,7 +14,6 @@ func (s *SpotifyState) FetchAlbumTracks(ctx context.Context, albumId spotify.ID)
 		log.Printf("SpotifyState: Fetching tracks for album: %s", albumId)
 		if albumId == "" {
 			log.Printf("SpotifyState: Invalid album ID")
-			// Return ErrorMsg for invalid ID
 			return ErrorMsg{
 				Title:   "Invalid Input",
 				Message: "Invalid album ID provided.",
@@ -22,25 +21,29 @@ func (s *SpotifyState) FetchAlbumTracks(ctx context.Context, albumId spotify.ID)
 		}
 
 		s.mu.RLock()
-		cachedTracks, exists := s.tracksCache[albumId]
+		cachedEntry, exists := s.tracksCache[albumId]
 		s.mu.RUnlock()
 
 		if exists {
-			log.Printf("SpotifyState: Found cached tracks for album %s", albumId)
+			log.Printf("SpotifyState: Found cached tracks for album %s (%d tracks)",
+				albumId, len(cachedEntry.Tracks))
+
 			s.mu.Lock()
-			s.tracks = cachedTracks
+			s.tracks = make([]spotify.SimpleTrack, len(cachedEntry.Tracks))
+			copy(s.tracks, cachedEntry.Tracks)
 			s.mu.Unlock()
 
-			log.Printf("SpotifyState: Successfully loaded %d tracks from cache for album %s", len(cachedTracks), albumId)
-			// Return success message (empty)
-			return TracksUpdatedMsg{}
+			return TracksUpdatedMsg{
+				SourceID: albumId,
+				Tracks:   cachedEntry.Tracks,
+				NextPage: nil,
+			}
 		}
 
 		log.Printf("SpotifyState: No cache found, fetching from API for album %s", albumId)
 		albumTracks, err := s.client.GetAlbum(ctx, albumId)
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching album info: %v", err)
-			// Return ErrorMsg for API error
 			return ErrorMsg{
 				Title:   fmt.Sprintf("Failed to Fetch Album Info for %s", albumId),
 				Message: err.Error(),
@@ -50,13 +53,13 @@ func (s *SpotifyState) FetchAlbumTracks(ctx context.Context, albumId spotify.ID)
 		allTracks := albumTracks.Tracks.Tracks
 
 		for page := 1; ; page++ {
-			log.Printf("SpotifyState: Fetching page %d of playlist items", page)
+			log.Printf("SpotifyState: Fetching page %d of album tracks", page)
 			err = s.client.NextPage(ctx, &albumTracks.Tracks)
 			if err == spotify.ErrNoMorePages {
 				break
 			}
 			if err != nil {
-				log.Println("SpotifyState: Error fetching next page of playlist items:", err)
+				log.Printf("SpotifyState: Error fetching next page of album tracks: %v", err)
 				break
 			}
 
@@ -69,13 +72,14 @@ func (s *SpotifyState) FetchAlbumTracks(ctx context.Context, albumId spotify.ID)
 			simpleTracks = append(simpleTracks, item)
 		}
 
-		s.mu.Lock()
-		s.tracks = simpleTracks
-		s.tracksCache[albumId] = simpleTracks
-		s.mu.Unlock()
+		s.updateCacheEntry(albumId, simpleTracks, nil, false, len(simpleTracks), false)
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d tracks for album %s", len(simpleTracks), albumId)
-		// Return success message (empty)
-		return TracksUpdatedMsg{}
+
+		return TracksUpdatedMsg{
+			SourceID: albumId,
+			Tracks:   simpleTracks,
+			NextPage: nil,
+		}
 	}
 }

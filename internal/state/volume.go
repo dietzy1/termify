@@ -15,11 +15,7 @@ func (s *SpotifyState) IncreaseVolume(ctx context.Context) tea.Cmd {
 		currentVolume := s.playerState.Device.Volume
 		s.mu.RUnlock()
 
-		// Increase by 10%, max 100
-		newVolume := currentVolume + 10
-		if newVolume > 100 {
-			newVolume = 100
-		}
+		newVolume := min(currentVolume+10, 100)
 
 		err := s.client.Volume(ctx, int(newVolume))
 		if err != nil {
@@ -46,10 +42,7 @@ func (s *SpotifyState) DecreaseVolume(ctx context.Context) tea.Cmd {
 		s.mu.RUnlock()
 
 		// Decrease by 10%, min 0
-		newVolume := currentVolume - 10
-		if newVolume < 0 {
-			newVolume = 0
-		}
+		newVolume := max(currentVolume-10, 0)
 
 		err := s.client.Volume(ctx, int(newVolume))
 		if err != nil {

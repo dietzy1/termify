@@ -16,18 +16,18 @@ func UpdateQueue() tea.Cmd {
 	}
 }
 
-type Queue struct {
+type QueueManager struct {
 	tracks []spotify.SimpleTrack
 	mutex  sync.RWMutex
 }
 
-func (q *Queue) Enqueue(track spotify.SimpleTrack) {
+func (q *QueueManager) Enqueue(track spotify.SimpleTrack) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 	q.tracks = append(q.tracks, track)
 }
 
-func (q *Queue) Dequeue() (spotify.SimpleTrack, error) {
+func (q *QueueManager) Dequeue() (spotify.SimpleTrack, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -40,7 +40,7 @@ func (q *Queue) Dequeue() (spotify.SimpleTrack, error) {
 	return track, nil
 }
 
-func (q *Queue) Peek() (spotify.SimpleTrack, error) {
+func (q *QueueManager) Peek() (spotify.SimpleTrack, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -51,7 +51,7 @@ func (q *Queue) Peek() (spotify.SimpleTrack, error) {
 	return q.tracks[0], nil
 }
 
-func (q *Queue) List() []spotify.SimpleTrack {
+func (q *QueueManager) List() []spotify.SimpleTrack {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -60,19 +60,19 @@ func (q *Queue) List() []spotify.SimpleTrack {
 	return result
 }
 
-func (q *Queue) Size() int {
+func (q *QueueManager) Size() int {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 	return len(q.tracks)
 }
 
-func (q *Queue) IsEmpty() bool {
+func (q *QueueManager) IsEmpty() bool {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 	return len(q.tracks) == 0
 }
 
-func (q *Queue) PopAt(index int) (spotify.SimpleTrack, error) {
+func (q *QueueManager) PopAt(index int) (spotify.SimpleTrack, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 

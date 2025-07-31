@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dietzy1/termify/internal/authentication"
@@ -63,6 +65,23 @@ func main() {
 		}
 	}()
 
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				log.Printf("Memory usage - Alloc: %d KB, Sys: %d KB, NumGC: %d",
+					m.Alloc/1024, m.Sys/1024, m.NumGC)
+			}
+		}
+	}()
+
 	// Run TUI - this will block until TUI exits
 	if err := tui.Run(ctx, config, authService, authService); err != nil {
 		log.Printf("TUI error: %v", err)
@@ -72,3 +91,5 @@ func main() {
 		fmt.Println("Termify encountered an error:", authServiceErr)
 	}
 }
+
+// Track memory usage and other metrics
