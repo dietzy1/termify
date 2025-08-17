@@ -43,6 +43,7 @@ func defaultConfig() *Config {
 	cfg := &Config{}
 
 	// Set default values
+
 	cfg.Server.Port = "8080"
 	cfg.Spotify.ConnectClient = "default"
 	cfg.Logging.Enabled = true
@@ -163,8 +164,7 @@ func (c *Config) loadFromFile(path string) error {
 // SaveConfig saves the current configuration to file
 func (c *Config) SaveConfig() error {
 	// Create directory if it doesn't exist
-	dir := filepath.Dir(c.ConfigPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(c.ConfigPath, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -173,7 +173,8 @@ func (c *Config) SaveConfig() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(c.ConfigPath, data, 0644); err != nil {
+	configFilePath := filepath.Join(c.ConfigPath, "config.yaml")
+	if err := os.WriteFile(configFilePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
