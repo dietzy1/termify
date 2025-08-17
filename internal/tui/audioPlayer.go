@@ -46,7 +46,7 @@ func (m audioPlayerModel) songInfoView() string {
 	}
 
 	var artist = "Unknown Artist"
-	if playerState.Item != nil {
+	if playerState.Item != nil && len(playerState.Item.Artists) > 0 {
 		artist = playerState.Item.Artists[0].Name
 	}
 

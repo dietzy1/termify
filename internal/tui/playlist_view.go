@@ -258,6 +258,10 @@ func (m *playlistViewModel) updateTableWithTracksAndLoading() {
 
 	loadedTracks := m.spotifyState.GetTracks()
 	totalTracks := m.spotifyState.GetTotalTracks(selectedID)
+	if totalTracks == 0 {
+		m.table = m.table.WithRows([]table.Row{})
+		return
+	}
 
 	rows := make([]table.Row, totalTracks)
 	playerState := m.spotifyState.GetPlayerState()

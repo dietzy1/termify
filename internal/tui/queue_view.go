@@ -247,9 +247,12 @@ func (m queueModel) convertQueueToItems() []list.Item {
 		if title == "" {
 			title = "Untitled Playlist"
 		}
-		desc := item.Artists[0].Name
+		desc := "Unknown Artist"
+		if len(item.Artists) > 0 {
+			desc = item.Artists[0].Name
+		}
 		if desc == "" {
-			desc = "Unknown Owner"
+			desc = "Unknown Artist"
 		}
 
 		items = append(items, queueItem{
