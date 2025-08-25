@@ -1,9 +1,10 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
 type FocusedModel int
@@ -92,7 +93,7 @@ func (m *applicationModel) cycleFocus() tea.Cmd {
 		m.deviceSelector.Blur()
 	case FocusQueue:
 		m.focusedModel = FocusLibrary
-		return tea.WindowSize()
+		return tea.RequestWindowSize
 	}
 
 	return nil
@@ -132,7 +133,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 
 		return m, tea.Sequence(
 			navigateToLibrary(),
-			tea.WindowSize(),
+			tea.RequestWindowSize,
 		), true
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.activeViewport == HelpView:
@@ -147,7 +148,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		return m, tea.Sequence(
 			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
 			navigateToLibrary(),
-			tea.WindowSize(),
+			tea.RequestWindowSize,
 		), true
 	}
 
@@ -161,7 +162,7 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.Search):
 		return m, tea.Batch(
 			navigateToSearch(),
-			tea.WindowSize(),
+			tea.RequestWindowSize,
 		), true
 
 	case key.Matches(msg, DefaultKeyMap.Help):
@@ -171,12 +172,12 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 	case key.Matches(msg, DefaultKeyMap.ViewQueue):
 		m.activeViewport = MainView
 		m.focusedModel = FocusQueue
-		return m, tea.WindowSize(), true
+		return m, tea.RequestWindowSize, true
 
 	case key.Matches(msg, DefaultKeyMap.Device):
 		m.focusedModel = FocusDeviceSelector
 		m.deviceSelector.Focus()
-		return m, tea.WindowSize(), true
+		return m, tea.RequestWindowSize, true
 	}
 
 	//Playback controls globals
@@ -255,9 +256,9 @@ func (m *applicationModel) toggleHelpView() {
 }
 
 // Helper function to get border style based on focus state
-func getBorderStyle(isFocused bool) lipgloss.Color {
+func getBorderStyle(isFocused bool) color.Color {
 	if isFocused {
-		return lipgloss.Color(PrimaryColor)
+		return PrimaryColor
 	}
-	return lipgloss.Color(BorderColor)
+	return BorderColor
 }

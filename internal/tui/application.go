@@ -4,11 +4,11 @@ import (
 	"context"
 	"log"
 
-	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/cursor"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 	"github.com/zmb3/spotify/v2"
 )
@@ -37,7 +37,8 @@ type applicationModel struct {
 func (m applicationModel) Init() tea.Cmd {
 	log.Println("Application: Initializing application model")
 	return tea.Batch(
-		tea.WindowSize(),
+
+		tea.RequestWindowSize,
 		m.searchBar.Init(),
 		m.audioPlayer.Init(),
 		m.playlistView.Init(),
@@ -45,6 +46,7 @@ func (m applicationModel) Init() tea.Cmd {
 		m.spotifyState.FetchPlaybackState(m.ctx),
 		m.spotifyState.FetchDevices(m.ctx),
 	)
+
 }
 
 func newApplication(ctx context.Context, client *spotify.Client) applicationModel {
@@ -332,7 +334,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 
 	queueWidth := 0
 	if m.focusedModel == FocusQueue {
-		queueWidth = lipgloss.Width(m.library.View())
+		queueWidth = lipgloss.Width(m.queueView.View())
 	}
 
 	mainContentViewWidth := msg.Width - libraryWidth - queueWidth

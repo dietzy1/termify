@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 	"github.com/evertras/bubble-table/table"
 	"github.com/zmb3/spotify/v2"
@@ -49,7 +49,7 @@ func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) play
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
+	s.Style = lipgloss.NewStyle().Foreground(PrimaryColor)
 	s.Spinner.FPS = time.Second * 1 / 2
 
 	return playlistViewModel{
@@ -181,12 +181,17 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m playlistViewModel) View() string {
+
 	m.table = m.table.Border(RoundedTableBorders).
 		HeaderStyle(
 			lipgloss.NewStyle().
+				BorderBackground(BackgroundColor).
 				BorderForeground(getBorderStyle(m.isFocused)))
 	m.table = m.table.WithBaseStyle(
-		lipgloss.NewStyle().BorderForeground(getBorderStyle(m.isFocused)),
+		lipgloss.NewStyle().
+			BorderBackground(BackgroundColor).
+			Background(BackgroundColor).
+			BorderForeground(getBorderStyle(m.isFocused)),
 	)
 	m.table = m.table.Focused(m.isFocused)
 
@@ -229,13 +234,15 @@ func (m playlistViewModel) View() string {
 	}
 
 	styledName := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 1).
+		Background(BackgroundColor).
 		Render(name)
 
 	styledPage := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(WhiteTextColor)).
+		Foreground(WhiteTextColor).
 		Padding(0, 1).
+		Background(BackgroundColor).
 		Render(fmt.Sprintf("| Page %d/%d", currentPage, maxPage))
 
 	m.table = m.table.WithStaticFooter(
@@ -295,7 +302,7 @@ func (m *playlistViewModel) createTrackRow(track spotify.SimpleTrack, index int,
 	title := track.Name
 	if m.queuedTracks[track.ID] {
 		queuedStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(PrimaryColor)).
+			Foreground(PrimaryColor).
 			Bold(true)
 		title = title + " " + queuedStyle.Render("(Added to queue)")
 	}
@@ -319,7 +326,7 @@ func (m *playlistViewModel) createTrackRow(track spotify.SimpleTrack, index int,
 func (m *playlistViewModel) createLoadingRow(index int) table.Row {
 	loadingStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("8")).
-		Italic(true)
+		Italic(true).Background(BackgroundColor)
 
 	return table.NewRow(table.RowData{
 		"#":        fmt.Sprintf("%d", index+1),
@@ -340,16 +347,18 @@ func createPlaylistTable() table.Model {
 	}).WithRows([]table.Row{}).HeaderStyle(
 		lipgloss.NewStyle().
 			Bold(true).
-			BorderForeground(lipgloss.Color(BorderColor)).
+			BorderForeground(BorderColor).
 			Underline(true),
 	).WithBaseStyle(
 		lipgloss.NewStyle().
 			Align(lipgloss.Left).
-			BorderForeground(lipgloss.Color(BorderColor)),
+			BorderForeground(BorderColor).
+			BorderBackground(BackgroundColor).
+			Background(BackgroundColor),
 	).Focused(true).HighlightStyle(
 		lipgloss.NewStyle().
-			Background(lipgloss.Color(BackgroundColor)).
-			Foreground(lipgloss.Color(PrimaryColor)).
+			Background(BackgroundColor).
+			Foreground(PrimaryColor).
 			Padding(0, 0, 0, 1).Bold(true),
 	).Border(
 		RoundedTableBorders,

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/dietzy1/termify/internal/authentication"
 	"github.com/dietzy1/termify/internal/config"
 	"github.com/zmb3/spotify/v2"

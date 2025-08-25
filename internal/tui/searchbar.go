@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 )
 
@@ -34,17 +34,27 @@ func newSearchbar(ctx context.Context, spotifyState *state.SpotifyState) searchb
 	ti := textinput.New()
 	ti.Placeholder = "What do you want to play?"
 	ti.CharLimit = 25
-	ti.Width = 30
+	ti.SetWidth(30)
 
-	// Apply styles
-	ti.PromptStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+	ti.Styles.Blurred.Placeholder = lipgloss.NewStyle().
+		Foreground(TextColor).
+		Background(BackgroundColor).
+		MaxWidth(25)
 
-	ti.TextStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+	ti.Styles.Blurred.Text = lipgloss.NewStyle().
+		Foreground(TextColor).
+		Background(BackgroundColor).
+		MaxWidth(25)
 
-	ti.PlaceholderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+	ti.Styles.Focused.Placeholder = lipgloss.NewStyle().
+		Foreground(PrimaryColor).
+		Background(BackgroundColor).
+		MaxWidth(25)
+
+	ti.Styles.Focused.Text = lipgloss.NewStyle().
+		Foreground(TextColor).
+		Background(BackgroundColor).
+		MaxWidth(25)
 
 	return searchbarModel{
 		ctx:          ctx,
@@ -85,7 +95,7 @@ func (m searchbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.textInput.Width = m.width
+		m.textInput.SetWidth(m.width)
 
 	case debouncedSearch:
 		if m.textInput.Value() == msg.searchTerm {
@@ -120,6 +130,8 @@ func (m searchbarModel) View() string {
 	searchStyle := lipgloss.NewStyle().
 		Padding(0, 1).
 		Width(m.width - 2).
+		Background(BackgroundColor).
+		BorderBackground(BackgroundColor).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(getBorderStyle(m.isFocused))
 

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/zmb3/spotify/v2"
 )
 

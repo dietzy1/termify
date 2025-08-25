@@ -6,10 +6,10 @@ import (
 	"io"
 	"log"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 )
 
@@ -65,28 +65,32 @@ func (d numberedDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if isSelected {
 		titleStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(lipgloss.Color(borderColor)).
-			Foreground(lipgloss.Color(titleColor)).
+			BorderForeground(borderColor).
+			Background(BackgroundColor).
+			Foreground(titleColor).
 			Padding(0, 0, 0, 1).
 			Bold(true).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2).
+			Background(BackgroundColor).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	} else {
 		titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(titleColor)).
+			Foreground(titleColor).
 			Padding(0, 0, 0, 2).
+			Background(BackgroundColor).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2).
+			Background(BackgroundColor).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	}
@@ -98,14 +102,16 @@ func (d numberedDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 	if isSelected {
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2+descIndent).
+			Background(BackgroundColor).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	} else {
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2+descIndent).
+			Background(BackgroundColor).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	}
@@ -119,25 +125,37 @@ func newQueue(spotifyState *state.SpotifyState) queueModel {
 	delegate := numberedDelegate{isFocused: false}
 
 	const itemWidth = 28
-	l := list.New([]list.Item{}, delegate, itemWidth+2, 0)
+	l := list.New([]list.Item{}, delegate, itemWidth, 0)
 	l.Title = "Next in Queue"
+
 	l.Styles.TitleBar = lipgloss.NewStyle().
 		Padding(0, 0, 1, 2).
 		Width(itemWidth + 2)
+
 	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color(WhiteTextColor)).
+		Background(BorderColor).
+		Foreground(WhiteTextColor).
 		Padding(0, 1)
 
-	l.Styles.NoItems = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
-		Padding(0, 2).
-		Width(itemWidth + 2).
-		MaxWidth(itemWidth + 2)
+	l.Styles.PaginationStyle = lipgloss.NewStyle().
+		Background(BackgroundColor).PaddingLeft(2).
+		Width(itemWidth)
+
+	l.Paginator.ActiveDot = lipgloss.NewStyle().
+		Background(BackgroundColor).
+		Foreground(lipgloss.Color("#979797")).
+		Render("•")
+
+	l.Paginator.InactiveDot = lipgloss.NewStyle().
+		Background(BackgroundColor).
+		Foreground(lipgloss.Color("#3C3C3C")).
+		Render("•")
 
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
+	l.SetShowFilter(false)
 	l.DisableQuitKeybindings()
 
 	return queueModel{
@@ -198,22 +216,25 @@ func (m queueModel) View() string {
 	delegate := numberedDelegate{isFocused: m.isFocused}
 	m.list.SetDelegate(delegate)
 
+	titleStyle := lipgloss.NewStyle().
+		Background(BorderColor).
+		Foreground(WhiteTextColor).
+		Padding(0, 1)
+
+	titleBarStyle := lipgloss.NewStyle().
+		Padding(0, 0, 1, 2).
+		Width(28).
+		Background(BackgroundColor)
+
+	title := titleBarStyle.Render(titleStyle.Render("Next in Queue"))
+
 	if len(m.list.Items()) == 0 {
-		titleStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color(BorderColor)).
-			Foreground(lipgloss.Color(WhiteTextColor)).
-			Padding(0, 1)
-
-		titleBarStyle := lipgloss.NewStyle().
-			Padding(0, 0, 1, 2).
-			Width(30)
-
-		title := titleBarStyle.Render(titleStyle.Render("Next in Queue"))
 
 		emptyStyle := lipgloss.NewStyle().
 			Width(28).
 			Padding(0, 0, 0, 2).
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
+			Background(BackgroundColor).
 			Italic(true)
 
 		emptyMessage := emptyStyle.Render("No tracks in queue\nAdd some music to get started!")
@@ -225,6 +246,8 @@ func (m queueModel) View() string {
 			MaxHeight(m.height).
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(getBorderStyle(m.isFocused)).
+			BorderBackground(BackgroundColor).
+			Background(BackgroundColor).
 			Render(content)
 	}
 
@@ -232,7 +255,10 @@ func (m queueModel) View() string {
 		Height(m.height - 2).
 		MaxHeight(m.height).
 		BorderStyle(lipgloss.RoundedBorder()).
+		BorderBackground(BackgroundColor).
+		Background(BackgroundColor).
 		BorderForeground(getBorderStyle(m.isFocused)).
+		Width(28).
 		Render(m.list.View())
 }
 

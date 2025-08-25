@@ -3,8 +3,8 @@ package tui
 import (
 	"log"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 )
 
@@ -47,7 +47,7 @@ func (m playbackControlsModel) View() string {
 		Bold(true).
 		Padding(0, 3).
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(BorderColor)
+		BorderForeground(BorderColor).Background(BackgroundColor).BorderBackground(BackgroundColor)
 
 	var activeStyle = baseStyle.
 		Foreground(PrimaryColor)
@@ -55,6 +55,7 @@ func (m playbackControlsModel) View() string {
 	if m.width < SHRINKWIDTH {
 		baseStyle = baseStyle.Padding(0, 1)
 		activeStyle = activeStyle.Padding(0, 1)
+		return ""
 	}
 
 	shuffleButton := "⇄"
@@ -87,8 +88,11 @@ func (m playbackControlsModel) View() string {
 
 	for i, button := range buttons {
 		helperContent := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			Align(lipgloss.Center).Foreground(lipgloss.Color(TextColor)).MaxHeight(1).
+			Foreground(TextColor).
+			Background(BackgroundColor).
+			MaxHeight(1).
+			Width(9).
+			Align(lipgloss.Center).
 			Render(keybindTexts[i])
 
 		var btn string
@@ -100,7 +104,7 @@ func (m playbackControlsModel) View() string {
 		}
 
 		renderedButton := lipgloss.JoinVertical(lipgloss.Center,
-			lipgloss.NewStyle().Render(btn),
+			btn,
 			helperContent,
 		)
 		renderedButtons = append(renderedButtons, renderedButton)
@@ -117,7 +121,7 @@ func (m applicationModel) renderPlaybackSection() string {
 	volumeControlView := m.audioPlayer.volumeControlView()
 
 	// Calculate the available width for the center section
-	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) - 2
+	availableWidth := m.width - lipgloss.Width(songInfoView) - lipgloss.Width(volumeControlView) // was -2 before here
 
 	// Style for the playback section
 	combinedPlaybackSectionStyle := lipgloss.NewStyle().
@@ -127,7 +131,7 @@ func (m applicationModel) renderPlaybackSection() string {
 	centeredPlaybackControls := lipgloss.NewStyle().
 		Width(availableWidth).
 		Align(lipgloss.Center).
-		MaxHeight(4).
+		MaxHeight(4).Background(BackgroundColor).
 		Render(m.playbackControl.View())
 
 	centeredAudioPlayer := lipgloss.NewStyle().
@@ -138,7 +142,7 @@ func (m applicationModel) renderPlaybackSection() string {
 
 	// Join them vertically
 	centerSection := lipgloss.JoinVertical(
-		lipgloss.Center,
+		lipgloss.Bottom,
 		centeredPlaybackControls,
 		centeredAudioPlayer,
 	)

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 	"github.com/zmb3/spotify/v2"
 )
@@ -39,8 +39,8 @@ type deviceSelectorModel struct {
 func NewDeviceSelector(ctx context.Context, spotifyState *state.SpotifyState) deviceSelectorModel {
 	return deviceSelectorModel{
 		ctx:          ctx,
-		width:        28,
 		height:       4,
+		width:        29,
 		spotifyState: spotifyState,
 		devices:      []device{},
 		cursor:       0,
@@ -147,15 +147,19 @@ func (m deviceSelectorModel) View() string {
 	if len(m.devices) == 0 {
 		style := lipgloss.NewStyle().
 			Width(m.width).
-			Align(lipgloss.Right)
+			Align(lipgloss.Right).
+			Background(BackgroundColor)
 		return style.Render("No devices found")
 	}
 
 	currentDevice := m.devices[m.cursor]
 
 	navStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
-		Align(lipgloss.Right).MarginRight(2)
+		Foreground(TextColor).
+		Align(lipgloss.Right).
+		PaddingRight(2).
+		Background(BackgroundColor).
+		Width(30)
 
 	navText := ""
 	if len(m.devices) > 1 {
@@ -169,34 +173,46 @@ func (m deviceSelectorModel) View() string {
 		PaddingRight(1).
 		BorderRight(true).
 		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(getBorderStyle(m.isFocused))
+		BorderBackground(BackgroundColor).
+		BorderForeground(getBorderStyle(m.isFocused)).
+		Background(BackgroundColor)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Align(lipgloss.Right).
 		Width(m.width).
 		PaddingRight(1).
 		BorderRight(true).
 		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(getBorderStyle(m.isFocused))
+		BorderBackground(BackgroundColor).
+		BorderForeground(getBorderStyle(m.isFocused)).
+		Background(BackgroundColor)
 
 	deviceInfo := currentDevice.Name
 	deviceType := currentDevice.Type
 	if currentDevice.Active {
 		deviceType += " • Active"
-		nameStyle = nameStyle.Foreground(lipgloss.Color(TextColor)).Italic(true)
+		nameStyle = nameStyle.Foreground(TextColor).Italic(true)
 	}
 	if !currentDevice.Active {
 		deviceType += " • Inactive"
 	}
 	if m.isFocused {
-		nameStyle = nameStyle.Foreground(lipgloss.Color(PrimaryColor))
+		nameStyle = nameStyle.Foreground(PrimaryColor)
 	}
 
-	return lipgloss.JoinVertical(
+	joined := lipgloss.JoinVertical(
 		lipgloss.Right,
 		nameStyle.Render(deviceInfo),
 		descStyle.Render(deviceType),
 		navStyle.Render(navText),
+	)
+
+	// Use lipgloss.Place to get background colored
+	return lipgloss.Place(30, 4,
+		lipgloss.Right,
+		lipgloss.Bottom,
+		joined,
+		lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(BackgroundColor)),
 	)
 }

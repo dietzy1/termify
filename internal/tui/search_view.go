@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 	"github.com/zmb3/spotify/v2"
 )
@@ -182,13 +182,17 @@ func (m searchViewModel) View() string {
 	// Base style for all lists
 	baseStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground(BorderColor).
+		BorderBackground(BackgroundColor).
+		Background(BackgroundColor).
 		Padding(0, 0)
 
 	// Style for the focused list
 	focusedStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(PrimaryColor)).
+		BorderBackground(BackgroundColor).
+		BorderForeground(PrimaryColor).
+		Background(BackgroundColor).
 		Padding(0, 0)
 
 	// Determine which style to use for each list
@@ -311,10 +315,16 @@ func createEmptyList(title string) list.Model {
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 	l.DisableQuitKeybindings()
+
+	l.Styles.TitleBar = lipgloss.NewStyle().
+		PaddingLeft(2).
+		PaddingBottom(1).Width(100)
+
 	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
+		Background(BorderColor).
 		Foreground(WhiteTextColor).
-		Padding(0, 1)
+		PaddingLeft(1).
+		PaddingRight(1)
 
 	return l
 }
@@ -326,13 +336,15 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 		Foreground(WhiteTextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth - 2).
-		MaxWidth(itemWidth - 2)
+		MaxWidth(itemWidth - 2).
+		Background(BackgroundColor)
 
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth - 2).
-		MaxWidth(itemWidth - 2)
+		MaxWidth(itemWidth - 2).
+		Background(BackgroundColor)
 
 	// Create a function to get the appropriate selected style based on focus
 	getSelectedStyle := func(isFocused bool) lipgloss.Style {
@@ -343,8 +355,10 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 
 		return lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(lipgloss.Color(selectedColor)).
-			Foreground(lipgloss.Color(selectedColor)).
+			BorderForeground(selectedColor).
+			Foreground(selectedColor).
+			Background(BackgroundColor).
+			BorderBackground(BackgroundColor).
 			Padding(0, 0, 0, 1).
 			Bold(true).
 			Width(itemWidth - 2).
@@ -359,10 +373,11 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 		}
 
 		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color(selectedColor)).
+			Foreground(selectedColor).
 			Padding(0, 0, 0, 2).
 			Width(itemWidth - 2).
-			MaxWidth(itemWidth - 2)
+			MaxWidth(itemWidth - 2).
+			Background(BackgroundColor)
 	}
 
 	// Create delegates for each list with appropriate focus state
@@ -381,6 +396,21 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 	albumDelegate := list.NewDefaultDelegate()
 	albumDelegate.Styles.SelectedTitle = getSelectedStyle(m.activeList == FocusSearchAlbumsView)
 	albumDelegate.Styles.SelectedDesc = getSelectedDescStyle(m.activeList == FocusSearchAlbumsView)
+
+	var applyTitleStyle = func(l *list.Model) {
+		l.Styles.TitleBar = lipgloss.NewStyle().
+			Padding(0, 0, 1, 2).
+			Width(itemWidth + 4)
+
+		l.Styles.Title = lipgloss.NewStyle().
+			Background(BorderColor).
+			Foreground(WhiteTextColor).
+			Padding(0, 1)
+	}
+	applyTitleStyle(&m.trackList)
+	applyTitleStyle(&m.playlistList)
+	applyTitleStyle(&m.albumList)
+	applyTitleStyle(&m.artistList)
 
 	// Update the delegates for all lists
 	m.trackList.SetDelegate(trackDelegate)

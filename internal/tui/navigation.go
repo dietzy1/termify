@@ -1,8 +1,8 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/zmb3/spotify/v2"
 )
 
@@ -117,7 +117,7 @@ func (m applicationModel) renderNavigationHelp() string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#888888")).
 		Align(lipgloss.Center).
-		Width(m.width)
+		Width(m.width).Background(BackgroundColor)
 
 	return helpStyle.Render("Focus: " + focusName + " | " + helpText)
 }

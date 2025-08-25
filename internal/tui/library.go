@@ -1,10 +1,12 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"log"
+
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/state"
 )
 
@@ -32,33 +34,43 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 	delegate := list.NewDefaultDelegate()
 
 	const itemWidth = 28
+	l := list.New([]list.Item{}, delegate, itemWidth, 10) // +2 for borders
 
-	delegate.Styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(WhiteTextColor).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
-		Padding(0, 0, 0, 2).
-		Width(itemWidth).
-		MaxWidth(itemWidth)
-
-	l := list.New([]list.Item{}, delegate, itemWidth+2, 0) // +2 for borders
 	l.Title = "Your Library"
 	l.Styles.TitleBar = lipgloss.NewStyle().
-		Padding(0, 0, 1, 2).
-		Width(itemWidth + 2)
-	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color(WhiteTextColor)).
-		Padding(0, 1)
+		PaddingLeft(2).
+		PaddingBottom(1).Width(20)
 
-	l.SetShowStatusBar(false)
+	l.Styles.Title = lipgloss.NewStyle().
+		Background(BorderColor).
+		Foreground(WhiteTextColor).
+		PaddingLeft(1).
+		PaddingRight(1)
+
+	l.Styles.PaginationStyle = lipgloss.NewStyle().
+		Background(BackgroundColor).PaddingLeft(2).
+		Width(itemWidth)
+
+	l.Paginator.ActiveDot = lipgloss.NewStyle().
+		Background(BackgroundColor).
+		Foreground(lipgloss.Color("#979797")).
+		Render("•")
+
+	l.Paginator.InactiveDot = lipgloss.NewStyle().
+		Background(BackgroundColor).
+		Foreground(lipgloss.Color("#3C3C3C")).
+		Render("•")
+
+	l.Styles.Spinner = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#3C3C3C"))
+
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
+	l.SetShowStatusBar(true)
+	l.SetShowFilter(false)
 	l.DisableQuitKeybindings()
+
+	l.StopSpinner()
 
 	return libraryModel{
 		list:         l,
@@ -75,6 +87,7 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		log.Println("Library height recieved:", msg.Height)
 		m.height = msg.Height
 		m.list.SetHeight(m.height - 3)
 		return m, nil
@@ -95,6 +108,8 @@ func (m libraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+//╭──────────────────────────╮ how many characters? 28
+
 func (m libraryModel) View() string {
 	// Update delegate styles based on focus
 	delegate := list.NewDefaultDelegate()
@@ -104,12 +119,14 @@ func (m libraryModel) View() string {
 		Foreground(WhiteTextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
+		Background(BackgroundColor).
 		MaxWidth(itemWidth)
 
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
+		Background(BackgroundColor).
 		MaxWidth(itemWidth)
 
 	selectedTitleColor := WhiteTextColor
@@ -123,26 +140,31 @@ func (m libraryModel) View() string {
 
 	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(selectedTitleColor)).
-		Foreground(lipgloss.Color(selectedTitleColor)).
+		BorderForeground(selectedTitleColor).
+		Foreground(selectedTitleColor).
 		Padding(0, 0, 0, 1).
+		Background(BackgroundColor).
 		Bold(true).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
 	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(selectedDescColor)).
+		Foreground(selectedDescColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
+		Background(BackgroundColor).
 		MaxWidth(itemWidth)
 
 	m.list.SetDelegate(delegate)
 
 	return lipgloss.NewStyle().
-		Height(m.height - 2).
+		Height(m.height).
 		MaxHeight(m.height).
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(getBorderStyle(m.isFocused)).
+		BorderBackground(BackgroundColor).
+		Background(BackgroundColor).
+		Width(itemWidth + 2).
 		Render(m.list.View())
 }
 

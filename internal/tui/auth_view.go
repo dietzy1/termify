@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/dietzy1/termify/internal/authentication"
 	"github.com/dietzy1/termify/internal/config"
 	"github.com/pkg/browser"
@@ -43,7 +43,7 @@ func newAuthModel(ctx context.Context, c *config.Config, authenticator authentic
 	textInput.Placeholder = "Enter your Spotify Client ID"
 	textInput.Focus()
 	textInput.CharLimit = 32
-	textInput.Width = 40
+	textInput.SetWidth(40)
 
 	return authModel{
 		ctx:           ctx,
@@ -128,7 +128,7 @@ func (m authModel) View() string {
 		Height(m.height)
 
 	LogoStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground((PrimaryColor))
 
 	// Create a box for the main content
 	boxStyle := lipgloss.NewStyle().
@@ -138,12 +138,12 @@ func (m authModel) View() string {
 
 	inputStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground((BorderColor)).
 		Padding(1, 2).
 		Width(66)
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground((PrimaryColor)).
 		Bold(true).
 		MarginTop(1).
 		MarginBottom(1)
@@ -160,11 +160,11 @@ func (m authModel) View() string {
 		MarginBottom(1)
 
 	bulletStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground((PrimaryColor)).
 		SetString("• ")
 
 	urlStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground((PrimaryColor))
 
 	hintStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#666666")).
@@ -177,7 +177,7 @@ func (m authModel) View() string {
 
 	// Define styles for key hints
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground((PrimaryColor))
 
 	keyHint := lipgloss.JoinHorizontal(
 		lipgloss.Top,

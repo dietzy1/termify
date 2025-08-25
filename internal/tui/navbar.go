@@ -3,8 +3,8 @@ package tui
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 // Dont format
@@ -41,14 +41,38 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m navbarModel) View() string {
+	leftSection := m.resizedLogo()
+	rightSection := m.navItems()
+	availableWidth := min(max(m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection), 0), m.width)
+
+	middleSection := lipgloss.NewStyle().
+		Width(availableWidth).
+		Height(m.height).
+		Background(BackgroundColor).Render(" ")
+
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		Render(
+			lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				leftSection,
+				middleSection,
+				rightSection,
+			),
+		)
+}
+
+func (m navbarModel) navItems() string {
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		Bold(true)
 
 	helpText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("? "),
 		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
+			Background(BackgroundColor).
 			Render("Help"),
 	)
 
@@ -56,8 +80,9 @@ func (m navbarModel) View() string {
 	queueText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render(DefaultKeyMap.ViewQueue.Keys()...),
 		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			MarginLeft(1).
+			Foreground(TextColor).
+			Background(BackgroundColor).
+			PaddingLeft(1).
 			Render(fmt.Sprintf("View Queue (%d)", m.queueCount)),
 	)
 
@@ -68,43 +93,34 @@ func (m navbarModel) View() string {
 
 	rightSection := lipgloss.JoinHorizontal(lipgloss.Right,
 		lipgloss.NewStyle().
+			Background(BackgroundColor).
 			PaddingTop(paddingTop).
 			PaddingRight(2).
 			PaddingLeft(2).
 			Render(queueText),
 		lipgloss.NewStyle().
+			Background(BackgroundColor).
 			PaddingTop(paddingTop).
 			PaddingRight(2).
 			PaddingLeft(2).
 			Render(helpText),
 	)
 
-	leftSection := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
-		MarginLeft(1).
-		Render(func() string {
-			if m.height > 1 {
-				return logo
-			}
-			return smallLogo
-		}())
-
-	// Calculate available width for proper spacing
-	availableWidth := m.width - lipgloss.Width(leftSection) - lipgloss.Width(rightSection)
-	if availableWidth < 0 {
-		availableWidth = 0
-	}
-
-	// Create a full-width container with left and right sections
 	return lipgloss.NewStyle().
-		Width(m.width).
+		Background(BackgroundColor).
 		Height(m.height).
-		Render(
-			lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				leftSection,
-				lipgloss.NewStyle().Width(availableWidth).Render(""),
-				rightSection,
-			),
-		)
+		Render(rightSection)
+}
+
+func (m navbarModel) resizedLogo() string {
+	logoStyle := lipgloss.NewStyle().
+		Background(BackgroundColor).
+		Foreground(PrimaryColor).
+		PaddingLeft(1)
+
+	if m.height > 1 {
+		return logoStyle.Render(logo)
+
+	}
+	return logoStyle.Render(smallLogo)
 }

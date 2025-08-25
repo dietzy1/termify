@@ -3,22 +3,22 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 func (m applicationModel) renderHelp() string {
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground((PrimaryColor)).
 		Bold(true).
 		MarginBottom(1).
 		Padding(0, 1).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderBottom(true).
-		BorderForeground(lipgloss.Color(PrimaryColor))
+		BorderForeground((PrimaryColor))
 
 	sectionTitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground((PrimaryColor)).
 		Bold(true)
 
 	keyStyle := lipgloss.NewStyle().
@@ -26,11 +26,11 @@ func (m applicationModel) renderHelp() string {
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+		Foreground((TextColor))
 
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true, true, true, true).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground((BorderColor)).
 		Width(m.width - 2).
 		Align(lipgloss.Center).
 		Height(m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 3)

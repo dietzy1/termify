@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 type ShowToastMsg struct {
@@ -44,7 +44,7 @@ func (m errorToastModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, tea.Batch(
-			tea.WindowSize(),
+			tea.RequestWindowSize,
 			tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
 				return ErrorTimerExpiredMsg{}
 			}))
@@ -57,7 +57,7 @@ func (m errorToastModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.timer = nil
 		}
 
-		return m, tea.WindowSize()
+		return m, tea.RequestWindowSize
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

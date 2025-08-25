@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/dietzy1/termify/internal/authentication"
 	"github.com/dietzy1/termify/internal/config"
 	"github.com/dietzy1/termify/internal/tui"
