@@ -31,7 +31,8 @@ type applicationModel struct {
 	queueView       queueModel
 	playbackControl playbackControlsModel
 	audioPlayer     audioPlayerModel
-	deviceSelector  deviceSelectorModel
+	deviceView      deviceDisplayModel
+	dialog          dialogModel
 }
 
 func (m applicationModel) Init() tea.Cmd {
@@ -64,8 +65,9 @@ func newApplication(ctx context.Context, client *spotify.Client) applicationMode
 		queueView:       newQueue(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(ctx, spotifyState),
-		deviceSelector:  NewDeviceSelector(ctx, spotifyState),
+		deviceView:      NewDeviceDisplay(ctx, spotifyState),
 		errorToast:      newErrorToast(),
+		dialog:          newDialog(),
 		activeViewport:  MainView,
 	}
 }
@@ -73,7 +75,51 @@ func newApplication(ctx context.Context, client *spotify.Client) applicationMode
 func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	// Handle dialog messages first (dialog has highest priority when visible)
+	if m.dialog.IsVisible() {
+		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
+			m.dialog = updatedDialog.(dialogModel)
+			cmds = append(cmds, cmd)
+		}
+		// If dialog is visible, only process dialog messages and window size
+		switch msg.(type) {
+		case DialogMsg, HideDialogMsg, ShowDialogWithContentMsg, tea.WindowSizeMsg:
+			// Allow these messages to continue processing
+		default:
+			// Block other input when dialog is visible
+			return m, tea.Batch(cmds...)
+		}
+	}
+
 	switch msg := msg.(type) {
+	case ShowDialogMsg:
+		log.Println("Showing dialog...")
+		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
+			m.dialog = updatedDialog.(dialogModel)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case ShowDialogWithContentMsg:
+		log.Println("Showing dialog with content...")
+		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
+			m.dialog = updatedDialog.(dialogModel)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case DialogMsg:
+		// Handle dialog response here
+		log.Printf("Dialog response: accepted = %v", msg.Accepted)
+		return m, tea.Batch(cmds...)
+
+	case HideDialogMsg:
+		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
+			m.dialog = updatedDialog.(dialogModel)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
 	case state.QueueUpdatedMsg:
 		if updatedQueueView, cmd, ok := updateSubmodel(m.queueView, msg,
 			m.queueView); ok {
@@ -144,8 +190,8 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case state.DevicesUpdatedMsg:
-		if updatedDevices, cmd, ok := updateSubmodel(m.deviceSelector, msg, m.deviceSelector); ok {
-			m.deviceSelector = updatedDevices
+		if updatedDevices, cmd, ok := updateSubmodel(m.deviceView, msg, m.deviceView); ok {
+			m.deviceView = updatedDevices
 			cmds = append(cmds, cmd)
 		}
 
@@ -226,7 +272,12 @@ func (m applicationModel) View() string {
 	case HelpView:
 		viewportContent = m.renderHelp()
 	case MainView:
-		viewportContent = m.viewMain()
+		// Check if dialog is visible and render it instead of main content
+		if m.dialog.IsVisible() {
+			viewportContent = m.renderDialogView()
+		} else {
+			viewportContent = m.viewMain()
+		}
 	}
 
 	playbackSection := m.renderPlaybackSection()
@@ -240,13 +291,44 @@ func (m applicationModel) View() string {
 
 	navigationHelp := m.renderNavigationHelp()
 
-	return lipgloss.JoinVertical(
+	mainView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.JoinVertical(lipgloss.Top, navContent...),
 		viewportContent,
 		playbackSection,
 		navigationHelp,
 	)
+
+	return mainView
+}
+
+// renderDialogView renders the dialog in the content area like help view
+func (m applicationModel) renderDialogView() string {
+	dialogBox := m.dialog.View()
+	if dialogBox == "" {
+		return ""
+	}
+
+	// Use the same container style as help view for consistency
+	containerStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true, true, true, true).
+		BorderForeground(lipgloss.Color(BorderColor)).
+		Width(m.width - 2).
+		Align(lipgloss.Center).
+		Height(m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 3)
+
+	// Calculate the content area dimensions for centering the dialog
+	contentWidth := m.width - 4                                                                                                                          // Account for container border (2 on each side)
+	contentHeight := m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 5 // -5 for container border and margins
+
+	// Center the dialog within the container
+	centeredDialog := lipgloss.Place(
+		contentWidth, contentHeight,
+		lipgloss.Center, lipgloss.Center,
+		dialogBox,
+	)
+
+	return containerStyle.Render(centeredDialog)
 }
 
 func (m applicationModel) viewMain() string {
@@ -294,6 +376,12 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 	m.width = msg.Width
 	m.height = msg.Height
 
+	// Update dialog size
+	if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
+		m.dialog = updatedDialog.(dialogModel)
+		cmds = append(cmds, cmd)
+	}
+
 	if updatedErrorToast, cmd, ok := updateSubmodel(m.errorToast, tea.WindowSizeMsg{
 		Width: msg.Width,
 	}, m.errorToast); ok {
@@ -332,7 +420,7 @@ func (m applicationModel) handleWindowSizeMsg(msg tea.WindowSizeMsg) (applicatio
 
 	queueWidth := 0
 	if m.focusedModel == FocusQueue {
-		queueWidth = lipgloss.Width(m.library.View())
+		queueWidth = lipgloss.Width(m.queueView.View())
 	}
 
 	mainContentViewWidth := msg.Width - libraryWidth - queueWidth

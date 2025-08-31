@@ -89,7 +89,7 @@ func (m *applicationModel) cycleFocus() tea.Cmd {
 		}
 	case FocusDeviceSelector:
 		m.focusedModel = FocusLibrary
-		m.deviceSelector.Blur()
+		/* m.deviceSelector.Blur() */
 	case FocusQueue:
 		m.focusedModel = FocusLibrary
 		return tea.WindowSize()
@@ -126,9 +126,10 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 
 	// All return key cases
 	switch {
+
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		m.deviceSelector.Blur()
+		/* m.deviceSelector.Blur() */
 
 		return m, tea.Sequence(
 			navigateToLibrary(),
@@ -137,12 +138,12 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.activeViewport == HelpView:
 		m.activeViewport = MainView
-		m.deviceSelector.Blur()
+		/* m.deviceSelector.Blur() */
 		return m, nil, false
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		m.deviceSelector.Blur()
+		/* m.deviceSelector.Blur() */
 
 		return m, tea.Sequence(
 			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
@@ -173,10 +174,13 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 		m.focusedModel = FocusQueue
 		return m, tea.WindowSize(), true
 
-	case key.Matches(msg, DefaultKeyMap.Device):
-		m.focusedModel = FocusDeviceSelector
-		m.deviceSelector.Focus()
-		return m, tea.WindowSize(), true
+	case key.Matches(msg, DefaultKeyMap.DeviceDialog):
+		deviceDialog := NewDeviceDialog(m.ctx, m.spotifyState)
+		return m, func() tea.Msg {
+			return ShowDialogWithContentMsg{
+				Content: deviceDialog,
+			}
+		}, true
 	}
 
 	//Playback controls globals
@@ -232,10 +236,10 @@ func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchBar = searchBar.(searchbarModel)
 		cmds = append(cmds, cmd)
 
-	case FocusDeviceSelector:
-		deviceSelector, cmd := m.deviceSelector.Update(msg)
-		m.deviceSelector = deviceSelector.(deviceSelectorModel)
-		cmds = append(cmds, cmd)
+	/* case FocusDeviceSelector:
+	deviceSelector, cmd := m.deviceSelector.Update(msg)
+	m.deviceSelector = deviceSelector.(deviceSelectorModel)
+	cmds = append(cmds, cmd) */
 
 	case FocusQueue:
 		queue, cmd := m.queueView.Update(msg)

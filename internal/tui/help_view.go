@@ -46,7 +46,7 @@ func (m applicationModel) renderHelp() string {
 	}
 
 	systemBindings := []key.Binding{
-		DefaultKeyMap.Help, DefaultKeyMap.Quit, DefaultKeyMap.Search, DefaultKeyMap.ViewQueue, DefaultKeyMap.Device,
+		DefaultKeyMap.Help, DefaultKeyMap.Quit, DefaultKeyMap.Search, DefaultKeyMap.ViewQueue, DefaultKeyMap.DeviceDialog,
 	}
 
 	mediaBindings := []key.Binding{

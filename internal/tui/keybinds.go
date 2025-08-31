@@ -20,11 +20,11 @@ type KeyMap struct {
 	AddToQueue key.Binding
 
 	// System
-	Quit      key.Binding
-	Help      key.Binding
-	Search    key.Binding
-	ViewQueue key.Binding
-	Device    key.Binding
+	Quit         key.Binding
+	Help         key.Binding
+	Search       key.Binding
+	ViewQueue    key.Binding
+	DeviceDialog key.Binding
 
 	// Media controls
 	Shuffle    key.Binding
@@ -98,9 +98,9 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("/"),
 		key.WithHelp("/", "search"),
 	),
-	Device: key.NewBinding(
+	DeviceDialog: key.NewBinding(
 		key.WithKeys("d"),
-		key.WithHelp("d", "select device"),
+		key.WithHelp("d", "open device dialog"),
 	),
 	Return: key.NewBinding(
 		key.WithKeys("esc"),

@@ -2,14 +2,10 @@ package tui
 
 import (
 	"context"
-	"fmt"
-	"log"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dietzy1/termify/internal/state"
-	"github.com/zmb3/spotify/v2"
 )
 
 type device struct {
@@ -19,147 +15,69 @@ type device struct {
 	Type   string
 }
 
-type deviceKeyMap struct {
-	Previous key.Binding
-	Next     key.Binding
-	Select   key.Binding
-	Escape   key.Binding
-}
-
-type deviceSelectorModel struct {
+type deviceDisplayModel struct {
 	ctx          context.Context
 	width        int
 	height       int
 	spotifyState *state.SpotifyState
-	devices      []device
-	cursor       int
-	isFocused    bool
+	activeDevice *device
 }
 
-func NewDeviceSelector(ctx context.Context, spotifyState *state.SpotifyState) deviceSelectorModel {
-	return deviceSelectorModel{
+func NewDeviceDisplay(ctx context.Context, spotifyState *state.SpotifyState) deviceDisplayModel {
+	return deviceDisplayModel{
 		ctx:          ctx,
 		width:        28,
 		height:       4,
 		spotifyState: spotifyState,
-		devices:      []device{},
-		cursor:       0,
-		isFocused:    false,
+		activeDevice: nil,
 	}
 }
 
-func (m deviceSelectorModel) Init() tea.Cmd {
-
-	if len(m.devices) == 0 {
-		log.Println("No devices")
-		return nil
-	}
-
-	deviceID := spotify.ID(m.devices[m.cursor].ID)
-	if deviceID == "" {
-		log.Println("Unable to retrieve device ID")
-		return nil
-	}
-	return m.spotifyState.SelectDevice(m.ctx, deviceID)
+func (m deviceDisplayModel) Init() tea.Cmd {
+	return nil
 }
 
-func (m *deviceSelectorModel) Focus() {
-	m.isFocused = true
-	// Find and select the active device
-	for i, device := range m.devices {
-		if device.Active {
-			m.cursor = i
-			break
-		}
-	}
-}
-
-func (m *deviceSelectorModel) Blur() {
-	m.isFocused = false
-}
-
-func (m *deviceSelectorModel) updateDeviceList() {
+func (m *deviceDisplayModel) updateActiveDevice() {
 	deviceState := m.spotifyState.GetDeviceState()
 
 	if m.spotifyState == nil || len(deviceState) == 0 {
-		m.devices = []device{}
+		m.activeDevice = nil
 		return
 	}
 
-	m.devices = make([]device, 0, len(deviceState))
+	// Find the active device
 	for _, d := range deviceState {
-		m.devices = append(m.devices, device{
-			Name:   d.Name,
-			ID:     string(d.ID),
-			Active: d.Active,
-			Type:   d.Type,
-		})
-	}
-
-	// Find and select the active device
-	for i, device := range m.devices {
-		if device.Active {
-			m.cursor = i
-			break
+		if d.Active {
+			m.activeDevice = &device{
+				Name:   d.Name,
+				ID:     string(d.ID),
+				Active: d.Active,
+				Type:   d.Type,
+			}
+			return
 		}
 	}
+
+	// No active device found
+	m.activeDevice = nil
 }
 
-func (m deviceSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	switch msg := msg.(type) {
+func (m deviceDisplayModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
 	case state.DevicesUpdatedMsg:
-		m.updateDeviceList()
-
-	case tea.KeyMsg:
-		if !m.isFocused {
-			return m, nil
-		}
-
-		switch {
-		case key.Matches(msg, DefaultKeyMap.Left):
-			if m.cursor > 0 {
-				m.cursor--
-			} else if len(m.devices) > 0 {
-				// Wrap around to the end
-				m.cursor = len(m.devices) - 1
-			}
-		case key.Matches(msg, DefaultKeyMap.Right):
-			if m.cursor < len(m.devices)-1 {
-				m.cursor++
-			} else {
-				// Wrap around to the beginning
-				m.cursor = 0
-			}
-		case key.Matches(msg, DefaultKeyMap.Select):
-			if len(m.devices) == 0 {
-				return m, nil
-			}
-			deviceID := spotify.ID(m.devices[m.cursor].ID)
-			return m, m.spotifyState.SelectDevice(m.ctx, deviceID)
-		}
+		m.updateActiveDevice()
 	}
 
 	return m, nil
 }
 
-func (m deviceSelectorModel) View() string {
-	if len(m.devices) == 0 {
+func (m deviceDisplayModel) View() string {
+	if m.activeDevice == nil {
 		style := lipgloss.NewStyle().
 			Width(m.width).
-			Align(lipgloss.Right)
-		return style.Render("No devices found")
-	}
-
-	currentDevice := m.devices[m.cursor]
-
-	navStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
-		Align(lipgloss.Right).MarginRight(2)
-
-	navText := ""
-	if len(m.devices) > 1 {
-		navText = fmt.Sprintf("%d/%d", m.cursor+1, len(m.devices))
+			Align(lipgloss.Right).
+			Foreground(lipgloss.Color(TextColor))
+		return style.Render("No active device")
 	}
 
 	nameStyle := lipgloss.NewStyle().
@@ -167,36 +85,21 @@ func (m deviceSelectorModel) View() string {
 		Bold(true).
 		Width(m.width).
 		PaddingRight(1).
-		BorderRight(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(getBorderStyle(m.isFocused))
+		Foreground(lipgloss.Color(TextColor)).
+		Italic(true)
 
 	descStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(TextColor)).
 		Align(lipgloss.Right).
 		Width(m.width).
-		PaddingRight(1).
-		BorderRight(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(getBorderStyle(m.isFocused))
+		PaddingRight(1)
 
-	deviceInfo := currentDevice.Name
-	deviceType := currentDevice.Type
-	if currentDevice.Active {
-		deviceType += " • Active"
-		nameStyle = nameStyle.Foreground(lipgloss.Color(TextColor)).Italic(true)
-	}
-	if !currentDevice.Active {
-		deviceType += " • Inactive"
-	}
-	if m.isFocused {
-		nameStyle = nameStyle.Foreground(lipgloss.Color(PrimaryColor))
-	}
+	deviceInfo := m.activeDevice.Name
+	deviceType := m.activeDevice.Type + " • Active"
 
 	return lipgloss.JoinVertical(
 		lipgloss.Right,
 		nameStyle.Render(deviceInfo),
 		descStyle.Render(deviceType),
-		navStyle.Render(navText),
 	)
 }
