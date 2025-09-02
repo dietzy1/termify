@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dietzy1/termify/internal/config"
-	"github.com/zmb3/spotify/v2"
 )
 
 //go:embed login_complete.html
@@ -108,7 +107,7 @@ func (s *server) callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("State verification successful")
 
-	client := spotify.New(s.service.authenticator.Client(r.Context(), tok))
+	client := NewSpotifyClient(r.Context(), tok, s.service.authenticator)
 	s.service.program.Send(
 		LoginClientMsg{
 			Client: client,

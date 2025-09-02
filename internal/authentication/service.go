@@ -62,7 +62,6 @@ func (s *service) StartPkceAuth(clientID string) tea.Cmd {
 	}
 }
 
-// https://github.com/zmb3/spotify/issues/167
 func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 
 	token, err := s.credManager.loadToken()
@@ -86,10 +85,9 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 	// Exit early if we have a valid token
 	if token != nil && token.Valid() {
 		log.Println("Token is valid, returning client")
+
 		return func() tea.Msg {
-			return LoginClientMsg{Client: spotify.New(
-				s.authenticator.Client(ctx, token),
-			)}
+			return LoginClientMsg{Client: NewSpotifyClient(ctx, token, s.authenticator)}
 		}
 	}
 
@@ -106,7 +104,7 @@ func (s *service) StartStoredTokenAuth(ctx context.Context) tea.Cmd {
 			log.Println("Token refreshed successfully")
 			log.Println("Refreshed token:", refreshedToken)
 			return func() tea.Msg {
-				return LoginClientMsg{Client: spotify.New(s.authenticator.Client(ctx, refreshedToken))}
+				return LoginClientMsg{Client: NewSpotifyClient(ctx, refreshedToken, s.authenticator)}
 			}
 		}
 	}
@@ -156,6 +154,7 @@ func (s *service) setAuthenticator(clientID string) {
 		spotifyauth.WithScopes(
 			spotifyauth.ScopeUserReadPrivate,
 			spotifyauth.ScopePlaylistReadCollaborative,
+			spotifyauth.ScopePlaylistReadPrivate,
 			spotifyauth.ScopeUserReadPlaybackState,
 			spotifyauth.ScopeUserModifyPlaybackState,
 			spotifyauth.ScopeUserLibraryRead,

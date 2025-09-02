@@ -47,7 +47,7 @@ func (s *SpotifyState) FetchPlaylistTracks(ctx context.Context, playlistID spoti
 		}
 
 		log.Printf("SpotifyState: No cache found, fetching first page from API for playlist %s", playlistID)
-		playlistItems, err := s.client.GetPlaylistItems(ctx, playlistID, spotify.Limit(50))
+		playlistItems, err := s.client.GetPlaylistItems(ctx, playlistID, spotify.Limit(50), spotify.Market(spotify.MarketFromToken))
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlist items: %v", err)
 			return ErrorMsg{
@@ -57,16 +57,21 @@ func (s *SpotifyState) FetchPlaylistTracks(ctx context.Context, playlistID spoti
 		}
 
 		simpleTracks := s.convertPlaylistItemsToSimpleTracks(playlistItems.Items)
+		filteredCount := len(playlistItems.Items) - len(simpleTracks)
 
 		hasMore := len(playlistItems.Items) > 0 && playlistItems.Next != ""
 		totalTracks := playlistItems.Total
-		log.Printf("SpotifyState: Total tracks in playlist %s: %d, hasMore: %v",
-			playlistID, totalTracks, hasMore)
 
-		s.updateCacheEntry(playlistID, simpleTracks, playlistItems, hasMore, int(totalTracks), false)
+		if filteredCount > 0 {
+			log.Printf("SpotifyState: Filtered out %d tracks from first page", filteredCount)
+		}
 
-		log.Printf("SpotifyState: Successfully fetched first page: %d tracks (total: %d, hasMore: %v)",
-			len(simpleTracks), totalTracks, hasMore)
+		s.updateCacheEntry(playlistID, simpleTracks, playlistItems, hasMore, int(totalTracks), filteredCount, false)
+
+		// Get the adjusted total from cache for logging
+		adjustedTotal := s.GetTotalTracks(playlistID)
+		log.Printf("SpotifyState: Successfully fetched first page: %d tracks (filtered %d, adjusted total: %d), hasMore: %v",
+			len(simpleTracks), filteredCount, adjustedTotal, hasMore)
 
 		return TracksUpdatedMsg{
 			SourceID: playlistID,
@@ -124,13 +129,20 @@ func (s *SpotifyState) FetchNextTracksPage(ctx context.Context, sourceID spotify
 		log.Printf("SpotifyState: Successfully fetched next page, %d new items", len(pageToFetch.Items))
 
 		newSimpleTracks := s.convertPlaylistItemsToSimpleTracks(pageToFetch.Items)
+		filteredCount := len(pageToFetch.Items) - len(newSimpleTracks)
 
 		hasMore := len(pageToFetch.Items) > 0 && pageToFetch.Next != ""
 
-		s.updateCacheEntry(sourceID, newSimpleTracks, &pageToFetch, hasMore, int(pageToFetch.Total), true)
+		if filteredCount > 0 {
+			log.Printf("SpotifyState: Filtered out %d tracks from current page", filteredCount)
+		}
 
-		log.Printf("SpotifyState: Successfully appended %d new tracks, hasMore: %v",
-			len(newSimpleTracks), hasMore)
+		s.updateCacheEntry(sourceID, newSimpleTracks, &pageToFetch, hasMore, int(pageToFetch.Total), filteredCount, true)
+
+		// Get the adjusted total from cache for logging
+		adjustedTotal := s.GetTotalTracks(sourceID)
+		log.Printf("SpotifyState: Successfully appended %d new tracks (filtered %d), adjusted total: %d, hasMore: %v",
+			len(newSimpleTracks), filteredCount, adjustedTotal, hasMore)
 
 		return TracksUpdatedMsg{
 			SourceID: sourceID,
@@ -181,8 +193,8 @@ func (s *SpotifyState) FetchArtistTopTracks(ctx context.Context, artistID spotif
 			simpleTracks[i] = track.SimpleTrack
 		}
 
-		// Update cache and current state
-		s.updateCacheEntry(artistID, simpleTracks, nil, false, len(simpleTracks), false)
+		// Update cache and current state - artist top tracks are usually all playable, so no filtering
+		s.updateCacheEntry(artistID, simpleTracks, nil, false, len(simpleTracks), 0, false)
 
 		log.Printf("SpotifyState: Successfully fetched %d artist top tracks", len(simpleTracks))
 
@@ -194,21 +206,35 @@ func (s *SpotifyState) FetchArtistTopTracks(ctx context.Context, artistID spotif
 	}
 }
 
-// Helper function to convert playlist items to simple tracks
 func (s *SpotifyState) convertPlaylistItemsToSimpleTracks(items []spotify.PlaylistItem) []spotify.SimpleTrack {
 	simpleTracks := make([]spotify.SimpleTrack, 0, len(items))
 
 	for _, item := range items {
-		if item.Track.Track != nil && item.Track.Track.SimpleTrack.ID != "" {
-			track := item.Track.Track.SimpleTrack
 
-			// Fix album name issue - copy from full track if simple track album name is empty
-			if track.Album.Name == "" && item.Track.Track.Album.Name != "" {
-				track.Album.Name = item.Track.Track.Album.Name
-			}
-
-			simpleTracks = append(simpleTracks, track)
+		if item.Track.Track == nil {
+			log.Printf("SpotifyState: Skipping item - track is nil")
+			continue
 		}
+
+		if item.Track.Track.SimpleTrack.ID == "" {
+			log.Printf("SpotifyState: Skipping track - empty ID (name: %s)", item.Track.Track.SimpleTrack.Name)
+			continue
+		}
+
+		if item.Track.Track.IsPlayable != nil && !*item.Track.Track.IsPlayable {
+			log.Printf("SpotifyState: Skipping track - not playable (name: %s, ID: %s)",
+				item.Track.Track.SimpleTrack.Name, item.Track.Track.SimpleTrack.ID)
+			continue
+		}
+
+		track := item.Track.Track.SimpleTrack
+
+		// Fix album name issue - copy from full track if simple track album name is empty
+		if track.Album.Name == "" && item.Track.Track.Album.Name != "" {
+			track.Album.Name = item.Track.Track.Album.Name
+		}
+
+		simpleTracks = append(simpleTracks, track)
 	}
 
 	return simpleTracks

@@ -55,7 +55,7 @@ func (s *SpotifyState) FetchTopTracks(ctx context.Context, artistId spotify.ID) 
 			simpleTracks = append(simpleTracks, track.SimpleTrack)
 		}
 
-		s.updateCacheEntry(artistId, simpleTracks, nil, false, len(simpleTracks), false)
+		s.updateCacheEntry(artistId, simpleTracks, nil, false, len(simpleTracks), 0, false)
 
 		log.Printf("SpotifyState: Successfully fetched and cached %d top tracks for artist %s", len(simpleTracks), artistId)
 

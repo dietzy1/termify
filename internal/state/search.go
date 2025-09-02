@@ -17,7 +17,7 @@ func (s *SpotifyState) SearchEverything(ctx context.Context, query string) tea.C
 			return nil
 		}
 
-		results, err := s.client.Search(ctx, query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist)
+		results, err := s.client.Search(ctx, query, spotify.SearchTypeTrack|spotify.SearchTypeArtist|spotify.SearchTypeAlbum|spotify.SearchTypePlaylist, spotify.Market("from_token"))
 		if err != nil {
 			log.Printf("SpotifyState: Error searching: %v", err)
 			return ErrorMsg{

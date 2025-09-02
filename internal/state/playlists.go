@@ -28,7 +28,7 @@ func (s *SpotifyState) FetchPlaylists(ctx context.Context) tea.Cmd {
 			}
 		}
 
-		playlists, err := s.client.CurrentUsersPlaylists(ctx)
+		playlists, err := s.client.CurrentUsersPlaylists(ctx, spotify.Market(spotify.MarketFromToken))
 		if err != nil {
 			log.Printf("SpotifyState: Error fetching playlists: %v", err)
 			return ErrorMsg{
