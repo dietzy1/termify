@@ -59,7 +59,7 @@ func (m audioPlayerModel) songInfoView() string {
 		MaxHeight(5)
 
 	artistStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Align(lipgloss.Left).
 		Width(28)
 
@@ -81,7 +81,7 @@ func (m audioPlayerModel) songInfoView() string {
 
 func (m audioPlayerModel) View() string {
 	timeInfoStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Bold(true).
 		Align(lipgloss.Center).
 		Width(8)
@@ -174,11 +174,11 @@ func (m audioPlayerModel) volumeControlView() string {
 	}
 
 	barStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		PaddingRight(2)
 
 	emptyBarStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+		Foreground(TextColor)
 
 	var volumeIcon string
 	switch {

@@ -182,13 +182,13 @@ func (m searchViewModel) View() string {
 	// Base style for all lists
 	baseStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground(BorderColor).
 		Padding(0, 0)
 
 	// Style for the focused list
 	focusedStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(PrimaryColor)).
+		BorderForeground(PrimaryColor).
 		Padding(0, 0)
 
 	// Determine which style to use for each list
@@ -312,7 +312,7 @@ func createEmptyList(title string) list.Model {
 	l.SetShowHelp(false)
 	l.DisableQuitKeybindings()
 	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
+		Background(BorderColor).
 		Foreground(WhiteTextColor).
 		Padding(0, 1)
 
@@ -329,7 +329,7 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 		MaxWidth(itemWidth - 2)
 
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth - 2).
 		MaxWidth(itemWidth - 2)
@@ -343,8 +343,8 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 
 		return lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(lipgloss.Color(selectedColor)).
-			Foreground(lipgloss.Color(selectedColor)).
+			BorderForeground(selectedColor).
+			Foreground(selectedColor).
 			Padding(0, 0, 0, 1).
 			Bold(true).
 			Width(itemWidth - 2).
@@ -359,7 +359,7 @@ func (m *searchViewModel) updateListStyles(itemWidth int) {
 		}
 
 		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color(selectedColor)).
+			Foreground(selectedColor).
 			Padding(0, 0, 0, 2).
 			Width(itemWidth - 2).
 			MaxWidth(itemWidth - 2)

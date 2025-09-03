@@ -38,13 +38,13 @@ func newSearchbar(ctx context.Context, spotifyState *state.SpotifyState) searchb
 
 	// Apply styles
 	ti.PromptStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(PrimaryColor)
 
 	ti.TextStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+		Foreground(TextColor)
 
 	ti.PlaceholderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor))
+		Foreground(TextColor)
 
 	return searchbarModel{
 		ctx:          ctx,

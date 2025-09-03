@@ -49,7 +49,7 @@ func newPlaylistView(ctx context.Context, spotifyState *state.SpotifyState) play
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
+	s.Style = lipgloss.NewStyle().Foreground(PrimaryColor)
 	s.Spinner.FPS = time.Second * 1 / 2
 
 	return playlistViewModel{
@@ -230,12 +230,12 @@ func (m playlistViewModel) View() string {
 	}
 
 	styledName := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 1).
 		Render(name)
 
 	styledPage := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(WhiteTextColor)).
+		Foreground(WhiteTextColor).
 		Padding(0, 1).
 		Render(fmt.Sprintf("| Page %d/%d", currentPage, maxPage))
 
@@ -296,7 +296,7 @@ func (m *playlistViewModel) createTrackRow(track spotify.SimpleTrack, index int,
 	title := track.Name
 	if m.queuedTracks[track.ID] {
 		queuedStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(PrimaryColor)).
+			Foreground(PrimaryColor).
 			Bold(true)
 		title = title + " " + queuedStyle.Render("(Added to queue)")
 	}
@@ -319,7 +319,7 @@ func (m *playlistViewModel) createTrackRow(track spotify.SimpleTrack, index int,
 
 func (m *playlistViewModel) createLoadingRow(index int) table.Row {
 	loadingStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("8")).
+		Foreground(TextColor).
 		Italic(true)
 
 	return table.NewRow(table.RowData{
@@ -341,16 +341,15 @@ func createPlaylistTable() table.Model {
 	}).WithRows([]table.Row{}).HeaderStyle(
 		lipgloss.NewStyle().
 			Bold(true).
-			BorderForeground(lipgloss.Color(BorderColor)).
+			BorderForeground(BorderColor).
 			Underline(true),
 	).WithBaseStyle(
 		lipgloss.NewStyle().
 			Align(lipgloss.Left).
-			BorderForeground(lipgloss.Color(BorderColor)),
+			BorderForeground(BorderColor),
 	).Focused(true).HighlightStyle(
 		lipgloss.NewStyle().
-			Background(lipgloss.Color(BackgroundColor)).
-			Foreground(lipgloss.Color(PrimaryColor)).
+			Foreground(PrimaryColor).
 			Padding(0, 0, 0, 1).Bold(true),
 	).Border(
 		RoundedTableBorders,

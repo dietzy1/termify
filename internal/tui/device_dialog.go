@@ -48,7 +48,7 @@ func (m *deviceDialogContent) View() string {
 		style := lipgloss.NewStyle().
 			Width(40).
 			Align(lipgloss.Center).
-			Foreground(lipgloss.Color(TextColor))
+			Foreground(TextColor)
 		return style.Render("No devices found")
 	}
 
@@ -68,17 +68,17 @@ func (m *deviceDialogContent) View() string {
 		Italic(true)
 
 	selectedNameStyle := nameStyle.
-		Foreground(lipgloss.Color(WhiteTextColor))
+		Foreground(WhiteTextColor)
 
 	unselectedNameStyle := nameStyle.
-		Foreground(lipgloss.Color(TextColor))
+		Foreground(TextColor)
 
 	// Description/type styles
 	descStyle := lipgloss.NewStyle().
 		Width(40).
 		PaddingLeft(2).
 		PaddingRight(2).
-		Foreground(lipgloss.Color(TextColor))
+		Foreground((TextColor))
 
 	for i, device := range m.devices {
 		// Prepare device info
@@ -113,7 +113,7 @@ func (m *deviceDialogContent) View() string {
 	}
 
 	navHint := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Italic(true).
 		Width(40).
 		Align(lipgloss.Center).

@@ -74,7 +74,7 @@ func (m deviceDisplayModel) View() string {
 		style := lipgloss.NewStyle().
 			Width(m.width).
 			Align(lipgloss.Right).
-			Foreground(lipgloss.Color(TextColor))
+			Foreground(TextColor)
 		return style.Render("No active device")
 	}
 
@@ -83,11 +83,11 @@ func (m deviceDisplayModel) View() string {
 		Bold(true).
 		Width(m.width).
 		PaddingRight(1).
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Italic(true)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Align(lipgloss.Right).
 		Width(m.width).
 		PaddingRight(1)

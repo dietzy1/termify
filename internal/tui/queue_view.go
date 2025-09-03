@@ -65,27 +65,27 @@ func (d numberedDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if isSelected {
 		titleStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(lipgloss.Color(borderColor)).
-			Foreground(lipgloss.Color(titleColor)).
+			BorderForeground(borderColor).
+			Foreground(titleColor).
 			Padding(0, 0, 0, 1).
 			Bold(true).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	} else {
 		titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(titleColor)).
+			Foreground(titleColor).
 			Padding(0, 0, 0, 2).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
@@ -98,13 +98,13 @@ func (d numberedDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 	if isSelected {
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2+descIndent).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
 	} else {
 		descStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(descColor)).
+			Foreground(descColor).
 			Padding(0, 0, 0, 2+descIndent).
 			Width(itemWidth).
 			MaxWidth(itemWidth)
@@ -125,12 +125,12 @@ func newQueue(spotifyState *state.SpotifyState) queueModel {
 		Padding(0, 0, 1, 2).
 		Width(itemWidth + 2)
 	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color(WhiteTextColor)).
+		Background(BorderColor).
+		Foreground(WhiteTextColor).
 		Padding(0, 1)
 
 	l.Styles.NoItems = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 2).
 		Width(itemWidth + 2).
 		MaxWidth(itemWidth + 2)
@@ -200,8 +200,8 @@ func (m queueModel) View() string {
 
 	if len(m.list.Items()) == 0 {
 		titleStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color(BorderColor)).
-			Foreground(lipgloss.Color(WhiteTextColor)).
+			Background(BorderColor).
+			Foreground(WhiteTextColor).
 			Padding(0, 1)
 
 		titleBarStyle := lipgloss.NewStyle().
@@ -213,7 +213,7 @@ func (m queueModel) View() string {
 		emptyStyle := lipgloss.NewStyle().
 			Width(28).
 			Padding(0, 0, 0, 2).
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
 			Italic(true)
 
 		emptyMessage := emptyStyle.Render("No tracks in queue\nAdd some music to get started!")

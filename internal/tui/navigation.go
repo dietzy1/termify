@@ -111,7 +111,7 @@ func (m applicationModel) renderNavigationHelp() string {
 	}
 
 	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#888888")).
+		Foreground(TextColor).
 		Align(lipgloss.Center).
 		Width(m.width)
 

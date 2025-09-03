@@ -74,9 +74,9 @@ func (m errorToastModel) View() string {
 
 	renderWidth := m.width - 2
 	errorBar := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#ff4444")).
+		Foreground(DangerColor).
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#ff4444")).
+		BorderForeground(DangerColor).
 		Width(renderWidth).
 		Padding(0, 1).
 		MaxHeight(4)

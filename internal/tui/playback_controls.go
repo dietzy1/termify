@@ -87,8 +87,9 @@ func (m playbackControlsModel) View() string {
 
 	for i, button := range buttons {
 		helperContent := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
-			Align(lipgloss.Center).Foreground(lipgloss.Color(TextColor)).MaxHeight(1).
+			Foreground(TextColor).
+			Align(lipgloss.Center).
+			MaxHeight(1).
 			Render(keybindTexts[i])
 
 		var btn string

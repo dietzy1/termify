@@ -191,6 +191,8 @@ func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.deviceView = updatedDevices
 			cmds = append(cmds, cmd)
 		}
+		m.navbar.deviceCount = len(m.spotifyState.GetDeviceState())
+		return m, tea.Batch(cmds...)
 
 	case state.SearchResultsUpdatedMsg:
 
@@ -309,7 +311,7 @@ func (m applicationModel) renderDialogView() string {
 	// Use the same container style as help view for consistency
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true, true, true, true).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground(BorderColor).
 		Width(m.width - 2).
 		Align(lipgloss.Center).
 		Height(m.height - lipgloss.Height(m.navbar.View()) - lipgloss.Height(m.playbackControl.View()) - lipgloss.Height(m.audioPlayer.View()) - 3)

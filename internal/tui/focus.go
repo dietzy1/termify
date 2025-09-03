@@ -246,9 +246,9 @@ func (m *applicationModel) toggleHelpView() {
 }
 
 // Helper function to get border style based on focus state
-func getBorderStyle(isFocused bool) lipgloss.Color {
+func getBorderStyle(isFocused bool) lipgloss.AdaptiveColor {
 	if isFocused {
-		return lipgloss.Color(PrimaryColor)
+		return PrimaryColor
 	}
-	return lipgloss.Color(BorderColor)
+	return BorderColor
 }

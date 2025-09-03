@@ -40,7 +40,7 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 		MaxWidth(itemWidth)
 
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
@@ -51,8 +51,8 @@ func newLibrary(spotifyState *state.SpotifyState) libraryModel {
 		Padding(0, 0, 1, 2).
 		Width(itemWidth + 2)
 	l.Styles.Title = lipgloss.NewStyle().
-		Background(lipgloss.Color(BorderColor)).
-		Foreground(lipgloss.Color(WhiteTextColor)).
+		Background(BorderColor).
+		Foreground(WhiteTextColor).
 		Padding(0, 1)
 
 	l.SetShowStatusBar(false)
@@ -107,7 +107,7 @@ func (m libraryModel) View() string {
 		MaxWidth(itemWidth)
 
 	delegate.Styles.NormalDesc = delegate.Styles.NormalTitle.
-		Foreground(lipgloss.Color(TextColor)).
+		Foreground(TextColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
@@ -123,15 +123,15 @@ func (m libraryModel) View() string {
 
 	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(selectedTitleColor)).
-		Foreground(lipgloss.Color(selectedTitleColor)).
+		BorderForeground(selectedTitleColor).
+		Foreground(selectedTitleColor).
 		Padding(0, 0, 0, 1).
 		Bold(true).
 		Width(itemWidth).
 		MaxWidth(itemWidth)
 
 	delegate.Styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(selectedDescColor)).
+		Foreground(selectedDescColor).
 		Padding(0, 0, 0, 2).
 		Width(itemWidth).
 		MaxWidth(itemWidth)

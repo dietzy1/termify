@@ -128,7 +128,7 @@ func (m authModel) View() string {
 		Height(m.height)
 
 	LogoStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(PrimaryColor)
 
 	// Create a box for the main content
 	boxStyle := lipgloss.NewStyle().
@@ -138,18 +138,18 @@ func (m authModel) View() string {
 
 	inputStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(BorderColor)).
+		BorderForeground(BorderColor).
 		Padding(1, 2).
 		Width(66)
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		Bold(true).
 		MarginTop(1).
 		MarginBottom(1)
 
 	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#999999")).
+		Foreground(TextColor).
 		Italic(true).
 		MarginBottom(1)
 
@@ -160,24 +160,24 @@ func (m authModel) View() string {
 		MarginBottom(1)
 
 	bulletStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		SetString("• ")
 
 	urlStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(PrimaryColor)
 
 	hintStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#666666")).
+		Foreground(TextColor).
 		MarginTop(1).
 		Italic(true)
 
 	errorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF0000")).
+		Foreground(DangerColor).
 		MarginTop(1)
 
 	// Define styles for key hints
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor))
+		Foreground(PrimaryColor)
 
 	keyHint := lipgloss.JoinHorizontal(
 		lipgloss.Top,

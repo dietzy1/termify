@@ -9,10 +9,10 @@ import (
 
 // Dont format
 const logo = ` ______              _ ___    
-	/_  __/__ ______ _  (_) _/_ __
-	/ / / -_) __/  ' \/ / _/ // /
-	/_/  \__/_/ /_/_/_/_/_/ \_, / 
-						/___/  `
+/_  __/__ ______ _  (_) _/_ __
+ / / / -_) __/  ' \/ / _/ // /
+/_/  \__/_/ /_/_/_/_/_/ \_, / 
+                       /___/  `
 
 const smallLogo = `Termify`
 
@@ -20,6 +20,7 @@ var _ tea.Model = (*navbarModel)(nil)
 
 type navbarModel struct {
 	width, height int
+	deviceCount   int
 	queueCount    int
 }
 
@@ -42,28 +43,28 @@ func (m navbarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m navbarModel) View() string {
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		Bold(true)
 
 	helpText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render("? "),
 		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
 			Render("Help"),
 	)
 
 	deviceText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render(DefaultKeyMap.DeviceDialog.Keys()...),
 		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
 			MarginLeft(1).
-			Render("Device"),
+			Render(fmt.Sprintf("Devices (%d)", m.deviceCount)),
 	)
 
 	queueText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render(DefaultKeyMap.ViewQueue.Keys()...),
 		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(TextColor)).
+			Foreground(TextColor).
 			MarginLeft(1).
 			Render(fmt.Sprintf("Queue (%d)", m.queueCount)),
 	)
@@ -92,7 +93,7 @@ func (m navbarModel) View() string {
 	)
 
 	leftSection := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(PrimaryColor)).
+		Foreground(PrimaryColor).
 		MarginLeft(1).
 		Render(func() string {
 			if m.height > 1 {
@@ -101,11 +102,7 @@ func (m navbarModel) View() string {
 			return smallLogo
 		}())
 
-	// Calculate available width for proper spacing
-	availableWidth := m.width - lipgloss.Width(leftSection) - lipgloss.Width(rightSection)
-	if availableWidth < 0 {
-		availableWidth = 0
-	}
+	availableWidth := max(0, m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection))
 
 	// Create a full-width container with left and right sections
 	return lipgloss.NewStyle().
