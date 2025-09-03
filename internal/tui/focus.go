@@ -16,7 +16,6 @@ const (
 	FocusSearchPlaylistsView
 	FocusSearchArtistsView
 	FocusSearchAlbumsView
-	FocusDeviceSelector
 	FocusQueue
 )
 
@@ -87,9 +86,6 @@ func (m *applicationModel) cycleFocus() tea.Cmd {
 		} else {
 			m.focusedModel = FocusPlaylistView
 		}
-	case FocusDeviceSelector:
-		m.focusedModel = FocusLibrary
-		/* m.deviceSelector.Blur() */
 	case FocusQueue:
 		m.focusedModel = FocusLibrary
 		return tea.WindowSize()
@@ -124,12 +120,10 @@ func (m *applicationModel) cycleFocusBackward() tea.Cmd {
 func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, tea.Cmd, bool) {
 	var cmd tea.Cmd
 
-	// All return key cases
 	switch {
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel == FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		/* m.deviceSelector.Blur() */
 
 		return m, tea.Sequence(
 			navigateToLibrary(),
@@ -138,12 +132,10 @@ func (m applicationModel) handleGlobalKeys(msg tea.KeyMsg) (applicationModel, te
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.activeViewport == HelpView:
 		m.activeViewport = MainView
-		/* m.deviceSelector.Blur() */
 		return m, nil, false
 
 	case key.Matches(msg, DefaultKeyMap.Return) && m.focusedModel != FocusSearchBar:
 		m.searchBar.ExitSearchMode()
-		/* m.deviceSelector.Blur() */
 
 		return m, tea.Sequence(
 			m.spotifyState.SelectPlaylist(string(m.library.list.SelectedItem().(playlist).uri)),
@@ -235,11 +227,6 @@ func (m applicationModel) updateFocusedModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 		searchBar, cmd := m.searchBar.Update(msg)
 		m.searchBar = searchBar.(searchbarModel)
 		cmds = append(cmds, cmd)
-
-	/* case FocusDeviceSelector:
-	deviceSelector, cmd := m.deviceSelector.Update(msg)
-	m.deviceSelector = deviceSelector.(deviceSelectorModel)
-	cmds = append(cmds, cmd) */
 
 	case FocusQueue:
 		queue, cmd := m.queueView.Update(msg)

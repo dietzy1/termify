@@ -99,6 +99,7 @@ func (m playlistViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pageSize = 1
 			}
 
+			//Inefficient we could call into a len instead
 			totalLoadedTracks := len(m.spotifyState.GetTracks())
 			maxPageWithCurrentData := (totalLoadedTracks + pageSize - 1) / pageSize
 

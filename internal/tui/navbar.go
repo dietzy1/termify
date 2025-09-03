@@ -9,10 +9,10 @@ import (
 
 // Dont format
 const logo = ` ______              _ ___    
-/_  __/__ ______ _  (_) _/_ __
- / / / -_) __/  ' \/ / _/ // /
-/_/  \__/_/ /_/_/_/_/_/ \_, / 
-                       /___/  `
+	/_  __/__ ______ _  (_) _/_ __
+	/ / / -_) __/  ' \/ / _/ // /
+	/_/  \__/_/ /_/_/_/_/_/ \_, / 
+						/___/  `
 
 const smallLogo = `Termify`
 
@@ -52,13 +52,20 @@ func (m navbarModel) View() string {
 			Render("Help"),
 	)
 
-	// New queue text with count
+	deviceText := lipgloss.JoinHorizontal(lipgloss.Left,
+		keyStyle.Render(DefaultKeyMap.DeviceDialog.Keys()...),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(TextColor)).
+			MarginLeft(1).
+			Render("Device"),
+	)
+
 	queueText := lipgloss.JoinHorizontal(lipgloss.Left,
 		keyStyle.Render(DefaultKeyMap.ViewQueue.Keys()...),
 		lipgloss.NewStyle().
 			Foreground(lipgloss.Color(TextColor)).
 			MarginLeft(1).
-			Render(fmt.Sprintf("View Queue (%d)", m.queueCount)),
+			Render(fmt.Sprintf("Queue (%d)", m.queueCount)),
 	)
 
 	var paddingTop = 0
@@ -72,6 +79,11 @@ func (m navbarModel) View() string {
 			PaddingRight(2).
 			PaddingLeft(2).
 			Render(queueText),
+		lipgloss.NewStyle().
+			PaddingTop(paddingTop).
+			PaddingRight(2).
+			PaddingLeft(2).
+			Render(deviceText),
 		lipgloss.NewStyle().
 			PaddingTop(paddingTop).
 			PaddingRight(2).

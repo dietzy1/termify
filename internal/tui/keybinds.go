@@ -63,12 +63,12 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("enter", "select track"),
 	),
 	AddToQueue: key.NewBinding(
-		key.WithKeys("q"),
-		key.WithHelp("q", "Add to queue"),
+		key.WithKeys("a"),
+		key.WithHelp("a", "Add to queue"),
 	),
 	ViewQueue: key.NewBinding(
-		key.WithKeys("v"),
-		key.WithHelp("v", "View queue"),
+		key.WithKeys("q"),
+		key.WithHelp("q", "View queue"),
 	),
 	CycleFocusForward: key.NewBinding(
 		key.WithKeys("tab"),

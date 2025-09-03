@@ -7,6 +7,10 @@ import (
 	"github.com/dietzy1/termify/internal/state"
 )
 
+// TODO: I dont think this autoplay behaviour is needed I might have misunderstood what the fuck a spotify play context is.
+// Its probaly built into the Spotify API and should be handled there by changing play context each time we change view.
+// The queue however I think is fine as is to keep client side so nothing wrong there
+
 func (m applicationModel) handleAutoplay() (applicationModel, tea.Cmd) {
 	if !m.spotifyState.Queue.IsEmpty() {
 		log.Println("Queue is not empty, playing next track from queue")

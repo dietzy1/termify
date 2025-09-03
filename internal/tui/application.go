@@ -65,7 +65,7 @@ func newApplication(ctx context.Context, client *spotify.Client) applicationMode
 		queueView:       newQueue(spotifyState),
 		playbackControl: newPlaybackControlsModel(spotifyState),
 		audioPlayer:     newAudioPlayer(ctx, spotifyState),
-		deviceView:      NewDeviceDisplay(ctx, spotifyState),
+		deviceView:      newDeviceDisplay(ctx, spotifyState),
 		errorToast:      newErrorToast(),
 		dialog:          newDialog(),
 		activeViewport:  MainView,
@@ -75,31 +75,28 @@ func newApplication(ctx context.Context, client *spotify.Client) applicationMode
 func (m applicationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	// Handle dialog messages first (dialog has highest priority when visible)
 	if m.dialog.IsVisible() {
-		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
-			m.dialog = updatedDialog.(dialogModel)
-			cmds = append(cmds, cmd)
-		}
-		// If dialog is visible, only process dialog messages and window size
-		switch msg.(type) {
-		case DialogMsg, HideDialogMsg, ShowDialogWithContentMsg, tea.WindowSizeMsg:
-			// Allow these messages to continue processing
-		default:
-			// Block other input when dialog is visible
+		switch msg := msg.(type) {
+		case ShowDialogWithContentMsg, DialogMsg, HideDialogMsg:
+			cmds = append(cmds, updateAndAssign(&m.dialog, msg))
 			return m, tea.Batch(cmds...)
+		case tea.KeyMsg:
+			cmds = append(cmds, updateAndAssign(&m.dialog, msg))
+			return m, tea.Batch(cmds...)
+		case tea.WindowSizeMsg:
+			cmds = append(cmds, updateAndAssign(&m.dialog, msg))
+		default:
+			cmds = append(cmds, updateAndAssign(&m.dialog, msg))
 		}
 	}
 
 	switch msg := msg.(type) {
-	case ShowDialogMsg:
-		log.Println("Showing dialog...")
-		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {
-			m.dialog = updatedDialog.(dialogModel)
-			cmds = append(cmds, cmd)
-		}
+	case ShowDialogWithContentMsg, DialogMsg, HideDialogMsg:
+		cmds = append(cmds, updateAndAssign(&m.dialog, msg))
 		return m, tea.Batch(cmds...)
+	}
 
+	switch msg := msg.(type) {
 	case ShowDialogWithContentMsg:
 		log.Println("Showing dialog with content...")
 		if updatedDialog, cmd := m.dialog.Update(msg); updatedDialog != nil {

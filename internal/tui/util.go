@@ -20,6 +20,12 @@ func updateSubmodel[T any](model tea.Model, msg tea.Msg, targetType T) (T, tea.C
 	return typedModel, cmd, true
 }
 
+func updateAndAssign[T tea.Model](target *T, msg tea.Msg) tea.Cmd {
+	updated, cmd := (*target).Update(msg)
+	*target = updated.(T)
+	return cmd
+}
+
 func formatDuration(seconds int) string {
 	minutes := seconds / 60
 	remainingSeconds := seconds % 60

@@ -13,9 +13,31 @@ import (
 
 const (
 	maxRetries     = 3
-	baseRetryDelay = 200 * time.Millisecond
+	baseRetryDelay = 300 * time.Millisecond
 	maxRetryDelay  = 2 * time.Second
 )
+
+// I think I have a race condition bug that causes my events to not update with the new state
+/* debug 2025/09/01 09:21:10 Queue is empty, playing next track based on current view
+debug 2025/09/01 09:21:10 Current track ID: 39u2PsqrAZpZ0KPx6CjasV
+debug 2025/09/01 09:21:10 Found current track at index 2, returning next track
+debug 2025/09/01 09:21:10 Playing next track from playlist: 4Hqljm3isbB06PFFwuZBuB
+debug 2025/09/01 09:21:10 SpotifyState: Player state fetched (attempt 1): timestamp 1756711268689 vs 1756711208672
+debug 2025/09/01 09:21:10 Playback controls recieved player state update
+debug 2025/09/01 09:21:10 Received PlayerState Update message in audio player layer */
+// Logs of the behaviour
+
+// For some reason then its failing to play the correct tracks regardless of the IDs being different
+//debug 2025/09/01 09:40:58 Playing next track from playlist: 7savgeJ68qbqGm6tDFge6q
+//debug 2025/09/01 09:40:59 SpotifyState: Player state fetched (attempt 1): timestamp 1756712458204 vs 1756712397721
+//debug 2025/09/01 09:40:59 SpotifyState: Player state updated successfully Fried Chicken
+
+/* debug 2025/09/01 09:41:59 Found current track at index 1, returning next track
+debug 2025/09/01 09:41:59 Playing next track from playlist: 39u2PsqrAZpZ0KPx6CjasV
+debug 2025/09/01 09:42:00 SpotifyState: Player state fetched (attempt 1): timestamp 1756712518665 vs 1756712458204
+debug 2025/09/01 09:42:00 SpotifyState: Player state updated successfully Fried Chicken */
+
+// I fucking fixed it :)
 
 type RetryableOperation func(ctx context.Context) error
 
@@ -72,6 +94,7 @@ func (s *SpotifyState) updateStateWithRetry(ctx context.Context) error {
 			s.mu.Lock()
 			s.playerState = *state
 			s.mu.Unlock()
+			log.Println("SpotifyState: Player state updated successfully", state.Item.Name)
 			return nil
 		}
 
@@ -125,6 +148,7 @@ func (s *SpotifyState) PausePlayback(ctx context.Context) tea.Cmd {
 	return s.executeWithStateUpdate(ctx, operation, "Pause Playback")
 }
 
+// This doesn't work as of right now either I need to manually keep state of prior songs or convert to the context autoplay approach
 func (s *SpotifyState) PreviousTrack(ctx context.Context) tea.Cmd {
 	operation := func(ctx context.Context) error {
 		return s.client.Previous(ctx)

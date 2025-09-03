@@ -8,7 +8,6 @@ import (
 
 type tableView int
 
-// Trackview can consit of playlistTracks, artist top tracks, album tracks
 const (
 	playlistView tableView = iota
 	artistTopTracksView
@@ -100,9 +99,6 @@ func (m applicationModel) renderNavigationHelp() string {
 	case FocusSearchBar:
 		focusName = "Search"
 		helpText = "Esc: Exit search | tab: Navigate to content"
-	case FocusDeviceSelector:
-		focusName = "Device selection"
-		helpText = "←/→: Navigate devices | Enter: Select device | Esc: Back"
 	case FocusQueue:
 		focusName = "View queue"
 		helpText = "Tab: Switch to library | Enter: Play selected track | C: Clear item | Esc: Back"

@@ -23,7 +23,7 @@ type deviceDisplayModel struct {
 	activeDevice *device
 }
 
-func NewDeviceDisplay(ctx context.Context, spotifyState *state.SpotifyState) deviceDisplayModel {
+func newDeviceDisplay(ctx context.Context, spotifyState *state.SpotifyState) deviceDisplayModel {
 	return deviceDisplayModel{
 		ctx:          ctx,
 		width:        28,
@@ -45,7 +45,6 @@ func (m *deviceDisplayModel) updateActiveDevice() {
 		return
 	}
 
-	// Find the active device
 	for _, d := range deviceState {
 		if d.Active {
 			m.activeDevice = &device{
@@ -58,7 +57,6 @@ func (m *deviceDisplayModel) updateActiveDevice() {
 		}
 	}
 
-	// No active device found
 	m.activeDevice = nil
 }
 

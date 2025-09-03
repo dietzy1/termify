@@ -54,27 +54,62 @@ func (m *deviceDialogContent) View() string {
 
 	var deviceList []string
 
-	itemStyle := lipgloss.NewStyle().
+	// Base styles for device items
+	itemContainerStyle := lipgloss.NewStyle().
+		Width(40).
+		MarginBottom(1)
+
+	// Name styles
+	nameStyle := lipgloss.NewStyle().
+		Bold(true).
+		Width(40).
 		PaddingLeft(2).
 		PaddingRight(2).
-		MarginBottom(1).
-		Width(40)
+		Italic(true)
 
-	selectedStyle := itemStyle.
-		Foreground(lipgloss.Color(WhiteTextColor)).
-		Bold(true)
+	selectedNameStyle := nameStyle.
+		Foreground(lipgloss.Color(WhiteTextColor))
+
+	unselectedNameStyle := nameStyle.
+		Foreground(lipgloss.Color(TextColor))
+
+	// Description/type styles
+	descStyle := lipgloss.NewStyle().
+		Width(40).
+		PaddingLeft(2).
+		PaddingRight(2).
+		Foreground(lipgloss.Color(TextColor))
 
 	for i, device := range m.devices {
-		deviceInfo := fmt.Sprintf("%s (%s)", device.Name, device.Type)
+		// Prepare device info
+		deviceName := device.Name
+		deviceType := device.Type
 		if device.Active {
-			deviceInfo += " • Active"
+			deviceType += " • Active"
 		}
 
+		// Add cursor indicator
+		var nameText, descText string
+		var currentNameStyle lipgloss.Style
+
 		if i == m.cursor {
-			deviceList = append(deviceList, selectedStyle.Render(fmt.Sprintf("→ %s", deviceInfo)))
+			nameText = fmt.Sprintf("→ %s", deviceName)
+			descText = fmt.Sprintf("  %s", deviceType)
+			currentNameStyle = selectedNameStyle
 		} else {
-			deviceList = append(deviceList, itemStyle.Render(fmt.Sprintf("  %s", deviceInfo)))
+			nameText = fmt.Sprintf("  %s", deviceName)
+			descText = fmt.Sprintf("  %s", deviceType)
+			currentNameStyle = unselectedNameStyle
 		}
+
+		// Create two-line device item
+		deviceItem := lipgloss.JoinVertical(
+			lipgloss.Left,
+			currentNameStyle.Render(nameText),
+			descStyle.Render(descText),
+		)
+
+		deviceList = append(deviceList, itemContainerStyle.Render(deviceItem))
 	}
 
 	navHint := lipgloss.NewStyle().
